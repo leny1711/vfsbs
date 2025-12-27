@@ -1,0 +1,212 @@
+.search-container {
+  min-height: 100vh;
+  padding: var(--spacing-2xl) 0;
+}
+
+.search-header {
+  text-align: center;
+  margin-bottom: var(--spacing-2xl);
+}
+
+.search-header h1 {
+  font-size: 2.5rem;
+  color: var(--color-text-primary);
+  margin-bottom: var(--spacing-sm);
+}
+
+.search-header p {
+  font-size: 1.125rem;
+  color: var(--color-text-muted);
+}
+
+.search-filters-card {
+  margin-bottom: var(--spacing-2xl);
+}
+
+.search-filters {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: var(--spacing-lg);
+  align-items: end;
+}
+
+.search-button-container {
+  display: flex;
+  align-items: flex-end;
+}
+
+.no-results-card {
+  text-align: center;
+  padding: var(--spacing-3xl);
+}
+
+.no-results h3 {
+  font-size: 1.5rem;
+  color: var(--color-text-primary);
+  margin-bottom: var(--spacing-sm);
+}
+
+.no-results p {
+  color: var(--color-text-muted);
+  font-size: 1rem;
+}
+
+.search-results {
+  margin-top: var(--spacing-2xl);
+}
+
+.results-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: var(--spacing-xl);
+}
+
+.results-header h2 {
+  font-size: 1.75rem;
+  color: var(--color-text-primary);
+}
+
+.results-count {
+  font-size: 0.9375rem;
+  color: var(--color-text-muted);
+  font-weight: 500;
+}
+
+.schedules-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-lg);
+}
+
+.schedule-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: var(--spacing-xl);
+}
+
+.schedule-main {
+  flex: 1;
+}
+
+.schedule-route-info {
+  margin-bottom: var(--spacing-lg);
+}
+
+.schedule-route-info h3 {
+  font-size: 1.25rem;
+  color: var(--color-text-primary);
+  margin-bottom: var(--spacing-sm);
+}
+
+.route-cities {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  font-size: 0.9375rem;
+  color: var(--color-text-secondary);
+}
+
+.city {
+  font-weight: 500;
+}
+
+.arrow {
+  color: var(--color-primary);
+  font-size: 1.25rem;
+}
+
+.schedule-details-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: var(--spacing-lg);
+}
+
+.detail-item {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-xs);
+}
+
+.detail-label {
+  font-size: 0.75rem;
+  color: var(--color-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  font-weight: 600;
+}
+
+.detail-value {
+  font-size: 0.9375rem;
+  color: var(--color-text-primary);
+  font-weight: 600;
+}
+
+.detail-time {
+  font-size: 1.125rem;
+  color: var(--color-primary);
+  font-weight: 700;
+}
+
+.seats-count {
+  color: var(--color-success);
+}
+
+.schedule-actions {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: var(--spacing-md);
+  min-width: 150px;
+}
+
+.price-display {
+  text-align: right;
+}
+
+.price-label {
+  display: block;
+  font-size: 0.75rem;
+  color: var(--color-text-muted);
+  margin-bottom: var(--spacing-xs);
+}
+
+.price-value {
+  font-size: 2rem;
+  font-weight: 800;
+  color: var(--color-primary);
+}
+
+@media (max-width: 768px) {
+  .search-filters {
+    grid-template-columns: 1fr;
+  }
+
+  .schedule-item {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .schedule-details-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .schedule-actions {
+    flex-direction: row;
+    justify-content: space-between;
+    align-items: center;
+    width: 100%;
+    min-width: unset;
+  }
+
+  .price-display {
+    text-align: left;
+  }
+
+  .results-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: var(--spacing-sm);
+  }
+}

@@ -1,21 +1,33 @@
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
+import { useLocation } from 'react-router-dom';
 import { userAPI, bookingsAPI } from '../services/api';
+import { Button, Card, Loading, Alert } from '../components/ui';
 import { format } from 'date-fns';
+import './MyBookings.css';
 
 const MyBookings = () => {
+  const location = useLocation();
   const [bookings, setBookings] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const [cancelling, setCancelling] = useState(null);
+  const [successMessage, setSuccessMessage] = useState(location.state?.message || '');
 
   useEffect(() => {
-    loadBookings();
+    fetchBookings();
   }, []);
 
-  const loadBookings = async () => {
+  useEffect(() => {
+    if (successMessage) {
+      const timer = setTimeout(() => setSuccessMessage(''), 5000);
+      return () => clearTimeout(timer);
+    }
+  }, [successMessage]);
+
+  const fetchBookings = async () => {
     try {
+      setLoading(true);
       const response = await userAPI.getBookings();
-      setBookings(response.data.bookings || []);
+      setBookings(response.data.bookings || response.data || []);
     } catch (err) {
       setError('Failed to load bookings');
     } finally {
@@ -23,107 +35,136 @@ const MyBookings = () => {
     }
   };
 
-  const handleCancel = async (bookingId) => {
-    if (!confirm('Are you sure you want to cancel this booking?')) {
+  const handleCancelBooking = async (bookingId) => {
+    if (!window.confirm('Are you sure you want to cancel this booking?')) {
       return;
     }
 
-    setCancelling(bookingId);
     try {
       await bookingsAPI.cancel(bookingId);
-      await loadBookings();
+      setSuccessMessage('Booking cancelled successfully');
+      fetchBookings();
     } catch (err) {
-      alert(err.response?.data?.message || 'Failed to cancel booking');
-    } finally {
-      setCancelling(null);
+      setError(err.response?.data?.message || 'Failed to cancel booking');
     }
   };
 
+  const getStatusBadge = (status) => {
+    const badges = {
+      CONFIRMED: { text: 'Confirmed', className: 'status-confirmed' },
+      CANCELLED: { text: 'Cancelled', className: 'status-cancelled' },
+      PENDING: { text: 'Pending', className: 'status-pending' }
+    };
+    return badges[status] || { text: status, className: 'status-default' };
+  };
+
   if (loading) {
-    return <div className="loading">Loading...</div>;
+    return <Loading text="Loading your bookings..." />;
   }
 
   return (
-    <div className="container" style={{ paddingTop: '40px' }}>
-      <h2 style={{ marginBottom: '20px' }}>My Bookings</h2>
-
-      {error && (
-        <div className="card" style={{ backgroundColor: '#f8d7da', color: '#721c24' }}>
-          {error}
+    <div className="my-bookings-container">
+      <div className="container">
+        <div className="page-header">
+          <h1>My Bookings 🎫</h1>
+          <p>View and manage your bus tickets</p>
         </div>
-      )}
 
-      {bookings.length === 0 ? (
-        <div className="card" style={{ textAlign: 'center', padding: '40px' }}>
-          <p style={{ fontSize: '18px', color: '#666' }}>
-            You don't have any bookings yet.
-          </p>
-        </div>
-      ) : (
-        <div className="grid grid-2">
-          {bookings.map((booking) => (
-            <div key={booking.id} className="card">
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start', marginBottom: '15px' }}>
-                <h4 style={{ fontSize: '18px' }}>
-                  {booking.schedule?.route?.origin} → {booking.schedule?.route?.destination}
-                </h4>
-                <span style={{
-                  padding: '4px 12px',
-                  borderRadius: '12px',
-                  fontSize: '12px',
-                  fontWeight: 'bold',
-                  backgroundColor: booking.status === 'CONFIRMED' ? '#d4edda' : 
-                                 booking.status === 'CANCELLED' ? '#f8d7da' : '#fff3cd',
-                  color: booking.status === 'CONFIRMED' ? '#155724' : 
-                         booking.status === 'CANCELLED' ? '#721c24' : '#856404'
-                }}>
-                  {booking.status}
-                </span>
-              </div>
+        {successMessage && (
+          <Alert type="success" onClose={() => setSuccessMessage('')}>
+            {successMessage}
+          </Alert>
+        )}
 
-              <div style={{ marginBottom: '15px' }}>
-                <div style={{ marginBottom: '5px' }}>
-                  <strong>Booking ID:</strong> {booking.id}
-                </div>
-                <div style={{ marginBottom: '5px' }}>
-                  <strong>Passenger:</strong> {booking.passengerName}
-                </div>
-                <div style={{ marginBottom: '5px' }}>
-                  <strong>Phone:</strong> {booking.passengerPhone}
-                </div>
-                <div style={{ marginBottom: '5px' }}>
-                  <strong>Seats:</strong> {booking.seats}
-                </div>
-                <div style={{ marginBottom: '5px' }}>
-                  <strong>Total Price:</strong> ${booking.totalPrice}
-                </div>
-              </div>
+        {error && (
+          <Alert type="error" onClose={() => setError('')}>
+            {error}
+          </Alert>
+        )}
 
-              <div style={{ marginBottom: '15px', padding: '10px', backgroundColor: '#f8f9fa', borderRadius: '4px' }}>
-                <div style={{ marginBottom: '5px' }}>
-                  <strong>Departure:</strong><br/>
-                  {booking.schedule?.departureTime && format(new Date(booking.schedule.departureTime), 'MMM dd, yyyy HH:mm')}
-                </div>
-                <div>
-                  <strong>Arrival:</strong><br/>
-                  {booking.schedule?.arrivalTime && format(new Date(booking.schedule.arrivalTime), 'MMM dd, yyyy HH:mm')}
-                </div>
-              </div>
-
-              {booking.status === 'CONFIRMED' && (
-                <button
-                  onClick={() => handleCancel(booking.id)}
-                  className="btn btn-danger"
-                  style={{ width: '100%' }}
-                  disabled={cancelling === booking.id}
-                >
-                  {cancelling === booking.id ? 'Cancelling...' : 'Cancel Booking'}
-                </button>
-              )}
+        {bookings.length === 0 ? (
+          <Card className="no-bookings-card">
+            <div className="no-bookings">
+              <h3>No bookings yet</h3>
+              <p>Start your journey by booking your first bus ticket</p>
+              <Button variant="primary" onClick={() => window.location.href = '/search'}>
+                Search for Routes
+              </Button>
             </div>
-          ))}
-        </div>
-      )}
+          </Card>
+        ) : (
+          <div className="bookings-list">
+            {bookings.map((booking) => {
+              const statusBadge = getStatusBadge(booking.status);
+              return (
+                <Card key={booking.id} className="booking-card">
+                  <div className="booking-header">
+                    <div className="booking-route">
+                      <h3>{booking.schedule?.route?.name || 'Route'}</h3>
+                      <div className="route-path">
+                        <span>{booking.schedule?.route?.origin}</span>
+                        <span className="arrow">→</span>
+                        <span>{booking.schedule?.route?.destination}</span>
+                      </div>
+                    </div>
+                    <span className={`status-badge ${statusBadge.className}`}>
+                      {statusBadge.text}
+                    </span>
+                  </div>
+
+                  <div className="booking-details">
+                    <div className="detail-row">
+                      <div className="detail-item">
+                        <span className="label">Booking ID</span>
+                        <span className="value">{booking.id.slice(0, 8)}</span>
+                      </div>
+                      <div className="detail-item">
+                        <span className="label">Seats</span>
+                        <span className="value">{booking.numSeats}</span>
+                      </div>
+                      <div className="detail-item">
+                        <span className="label">Total Price</span>
+                        <span className="value price">${booking.totalPrice?.toFixed(2) || '0.00'}</span>
+                      </div>
+                    </div>
+
+                    <div className="detail-row">
+                      <div className="detail-item">
+                        <span className="label">Departure</span>
+                        <span className="value">
+                          {format(new Date(booking.schedule?.departureTime), 'MMM dd, yyyy HH:mm')}
+                        </span>
+                      </div>
+                      <div className="detail-item">
+                        <span className="label">Bus Number</span>
+                        <span className="value">{booking.schedule?.busNumber}</span>
+                      </div>
+                      <div className="detail-item">
+                        <span className="label">Booked On</span>
+                        <span className="value">
+                          {format(new Date(booking.createdAt), 'MMM dd, yyyy')}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {booking.status === 'CONFIRMED' && (
+                    <div className="booking-actions">
+                      <Button
+                        variant="danger"
+                        size="sm"
+                        onClick={() => handleCancelBooking(booking.id)}
+                      >
+                        Cancel Booking
+                      </Button>
+                    </div>
+                  )}
+                </Card>
+              );
+            })}
+          </div>
+        )}
+      </div>
     </div>
   );
 };

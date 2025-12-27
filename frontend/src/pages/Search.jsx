@@ -1,160 +1,191 @@
-import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { schedulesAPI } from '../services/api';
+import { Button, Card, Input, Loading, Alert } from '../components/ui';
 import { format } from 'date-fns';
+import './Search.css';
 
 const Search = () => {
-  const [origin, setOrigin] = useState('');
-  const [destination, setDestination] = useState('');
-  const [date, setDate] = useState('');
-  const [schedules, setSchedules] = useState([]);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const [schedules, setSchedules] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+  const [filters, setFilters] = useState({
+    origin: searchParams.get('origin') || '',
+    destination: searchParams.get('destination') || '',
+    date: ''
+  });
 
   useEffect(() => {
-    // Set default date to today
-    const today = new Date().toISOString().split('T')[0];
-    setDate(today);
+    fetchSchedules();
   }, []);
 
-  const handleSearch = async (e) => {
-    e.preventDefault();
-    setError('');
-    setLoading(true);
-
+  const fetchSchedules = async () => {
     try {
-      const response = await schedulesAPI.search({
-        origin,
-        destination,
-        date
-      });
-      setSchedules(response.data.schedules || []);
+      setLoading(true);
+      setError('');
+      const params = {};
+      if (filters.origin) params.origin = filters.origin;
+      if (filters.destination) params.destination = filters.destination;
+      if (filters.date) params.date = filters.date;
+
+      const response = await schedulesAPI.search(params);
+      setSchedules(response.data.schedules || response.data || []);
     } catch (err) {
-      setError(err.response?.data?.message || 'Failed to search schedules');
-      setSchedules([]);
+      setError('Failed to load schedules. Please try again.');
     } finally {
       setLoading(false);
     }
   };
 
-  const handleBook = (scheduleId) => {
-    navigate(`/booking/${scheduleId}`);
+  const handleSearch = () => {
+    fetchSchedules();
+  };
+
+  const handleFilterChange = (field, value) => {
+    setFilters({
+      ...filters,
+      [field]: value
+    });
   };
 
   return (
-    <div className="container" style={{ paddingTop: '40px' }}>
-      <div className="card">
-        <h2 style={{ marginBottom: '20px' }}>Search Bus Schedules</h2>
-        
-        <form onSubmit={handleSearch}>
-          <div className="grid grid-3">
-            <div className="form-group">
-              <label>Origin</label>
-              <input
-                type="text"
-                value={origin}
-                onChange={(e) => setOrigin(e.target.value)}
-                required
-                placeholder="e.g., New York"
-              />
-            </div>
+    <div className="search-container">
+      <div className="container">
+        <div className="search-header">
+          <h1>Search Bus Schedules 🔍</h1>
+          <p>Find the perfect route for your journey</p>
+        </div>
 
-            <div className="form-group">
-              <label>Destination</label>
-              <input
-                type="text"
-                value={destination}
-                onChange={(e) => setDestination(e.target.value)}
-                required
-                placeholder="e.g., Boston"
-              />
-            </div>
-
-            <div className="form-group">
-              <label>Date</label>
-              <input
-                type="date"
-                value={date}
-                onChange={(e) => setDate(e.target.value)}
-                required
-                min={new Date().toISOString().split('T')[0]}
-              />
+        <Card className="search-filters-card">
+          <div className="search-filters">
+            <Input
+              label="From"
+              placeholder="Enter origin city"
+              value={filters.origin}
+              onChange={(e) => handleFilterChange('origin', e.target.value)}
+              fullWidth={false}
+            />
+            <Input
+              label="To"
+              placeholder="Enter destination city"
+              value={filters.destination}
+              onChange={(e) => handleFilterChange('destination', e.target.value)}
+              fullWidth={false}
+            />
+            <Input
+              label="Date"
+              type="date"
+              value={filters.date}
+              onChange={(e) => handleFilterChange('date', e.target.value)}
+              fullWidth={false}
+            />
+            <div className="search-button-container">
+              <Button
+                variant="primary"
+                size="lg"
+                onClick={handleSearch}
+                fullWidth
+              >
+                Search
+              </Button>
             </div>
           </div>
+        </Card>
 
-          <button type="submit" className="btn btn-primary" disabled={loading}>
-            {loading ? 'Searching...' : 'Search'}
-          </button>
-        </form>
-      </div>
+        {error && <Alert type="error">{error}</Alert>}
 
-      {error && (
-        <div className="card" style={{ backgroundColor: '#f8d7da', color: '#721c24' }}>
-          {error}
-        </div>
-      )}
+        {loading ? (
+          <Loading text="Searching for schedules..." />
+        ) : schedules.length === 0 ? (
+          <Card className="no-results-card">
+            <div className="no-results">
+              <h3>No schedules found</h3>
+              <p>Try adjusting your search criteria</p>
+            </div>
+          </Card>
+        ) : (
+          <div className="search-results">
+            <div className="results-header">
+              <h2>Available Schedules</h2>
+              <span className="results-count">{schedules.length} routes found</span>
+            </div>
 
-      {schedules.length > 0 && (
-        <div>
-          <h3 style={{ margin: '30px 0 20px' }}>Available Schedules ({schedules.length})</h3>
-          <div className="grid grid-2">
-            {schedules.map((schedule) => (
-              <div key={schedule.id} className="card">
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start', marginBottom: '15px' }}>
-                  <div>
-                    <h4 style={{ marginBottom: '5px', fontSize: '18px' }}>
-                      {schedule.route?.origin} → {schedule.route?.destination}
-                    </h4>
-                    <p style={{ color: '#666', fontSize: '14px' }}>
-                      Distance: {schedule.route?.distance} km
-                    </p>
-                  </div>
-                  <div style={{ textAlign: 'right' }}>
-                    <div style={{ fontSize: '24px', fontWeight: 'bold', color: '#007bff' }}>
-                      ${schedule.price}
+            <div className="schedules-list">
+              {schedules.map((schedule) => (
+                <Card key={schedule.id} className="schedule-item" hover>
+                  <div className="schedule-main">
+                    <div className="schedule-route-info">
+                      <h3>{schedule.route?.name || 'Route'}</h3>
+                      <div className="route-cities">
+                        <span className="city">{schedule.route?.origin}</span>
+                        <span className="arrow">→</span>
+                        <span className="city">{schedule.route?.destination}</span>
+                      </div>
+                    </div>
+
+                    <div className="schedule-details-grid">
+                      <div className="detail-item">
+                        <span className="detail-label">Departure</span>
+                        <span className="detail-value">
+                          {format(new Date(schedule.departureTime), 'MMM dd, yyyy')}
+                        </span>
+                        <span className="detail-time">
+                          {format(new Date(schedule.departureTime), 'HH:mm')}
+                        </span>
+                      </div>
+
+                      <div className="detail-item">
+                        <span className="detail-label">Arrival</span>
+                        <span className="detail-value">
+                          {format(new Date(schedule.arrivalTime), 'MMM dd, yyyy')}
+                        </span>
+                        <span className="detail-time">
+                          {format(new Date(schedule.arrivalTime), 'HH:mm')}
+                        </span>
+                      </div>
+
+                      <div className="detail-item">
+                        <span className="detail-label">Duration</span>
+                        <span className="detail-value">
+                          {schedule.route?.duration
+                            ? `${Math.floor(schedule.route.duration / 60)}h ${schedule.route.duration % 60}m`
+                            : 'N/A'}
+                        </span>
+                      </div>
+
+                      <div className="detail-item">
+                        <span className="detail-label">Available Seats</span>
+                        <span className="detail-value seats-count">
+                          {schedule.availableSeats} / {schedule.totalSeats}
+                        </span>
+                      </div>
                     </div>
                   </div>
-                </div>
 
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', marginBottom: '15px' }}>
-                  <div>
-                    <strong>Departure:</strong><br/>
-                    {format(new Date(schedule.departureTime), 'MMM dd, yyyy HH:mm')}
+                  <div className="schedule-actions">
+                    <div className="price-display">
+                      <span className="price-label">Price</span>
+                      <span className="price-value">
+                        ${schedule.price?.toFixed(2) || '0.00'}
+                      </span>
+                    </div>
+                    <Button
+                      variant="primary"
+                      size="md"
+                      onClick={() => navigate(`/booking/${schedule.id}`)}
+                      disabled={schedule.availableSeats === 0}
+                    >
+                      {schedule.availableSeats === 0 ? 'Sold Out' : 'Book Now'}
+                    </Button>
                   </div>
-                  <div>
-                    <strong>Arrival:</strong><br/>
-                    {format(new Date(schedule.arrivalTime), 'MMM dd, yyyy HH:mm')}
-                  </div>
-                </div>
-
-                <div style={{ marginBottom: '15px' }}>
-                  <strong>Available Seats:</strong> {schedule.availableSeats} / {schedule.totalSeats}
-                </div>
-
-                <div style={{ display: 'flex', gap: '10px' }}>
-                  <button 
-                    onClick={() => handleBook(schedule.id)}
-                    className="btn btn-primary"
-                    style={{ flex: 1 }}
-                    disabled={schedule.availableSeats === 0}
-                  >
-                    {schedule.availableSeats === 0 ? 'Sold Out' : 'Book Now'}
-                  </button>
-                </div>
-              </div>
-            ))}
+                </Card>
+              ))}
+            </div>
           </div>
-        </div>
-      )}
-
-      {!loading && schedules.length === 0 && origin && destination && (
-        <div className="card" style={{ textAlign: 'center', padding: '40px' }}>
-          <p style={{ fontSize: '18px', color: '#666' }}>
-            No schedules found for the selected route and date.
-          </p>
-        </div>
-      )}
+        )}
+      </div>
     </div>
   );
 };

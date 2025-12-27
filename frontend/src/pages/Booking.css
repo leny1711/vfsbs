@@ -1,0 +1,213 @@
+.booking-container {
+  min-height: 100vh;
+  padding: var(--spacing-2xl) 0;
+  background: var(--color-background);
+}
+
+.booking-wrapper {
+  display: grid;
+  grid-template-columns: 1fr 380px;
+  gap: var(--spacing-2xl);
+  align-items: start;
+}
+
+.booking-main h1 {
+  font-size: 2rem;
+  margin-bottom: var(--spacing-xl);
+}
+
+.booking-main h3 {
+  font-size: 1.25rem;
+  margin-bottom: var(--spacing-lg);
+  color: var(--color-text-primary);
+}
+
+.schedule-summary-card {
+  margin-bottom: var(--spacing-xl);
+}
+
+.trip-info {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-lg);
+}
+
+.trip-route h4 {
+  font-size: 1.5rem;
+  color: var(--color-text-primary);
+  margin-bottom: var(--spacing-sm);
+}
+
+.route-line {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-md);
+  font-size: 1rem;
+}
+
+.route-location {
+  font-weight: 500;
+  color: var(--color-text-secondary);
+}
+
+.route-separator {
+  color: var(--color-primary);
+  font-size: 1.5rem;
+}
+
+.trip-details-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: var(--spacing-lg);
+}
+
+.trip-detail {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-xs);
+}
+
+.detail-label {
+  font-size: 0.75rem;
+  color: var(--color-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  font-weight: 600;
+}
+
+.detail-value {
+  font-size: 0.9375rem;
+  color: var(--color-text-primary);
+  font-weight: 600;
+}
+
+.detail-time {
+  font-size: 1.125rem;
+  color: var(--color-primary);
+  font-weight: 700;
+}
+
+.available-seats-info {
+  color: var(--color-text-muted);
+  font-size: 0.875rem;
+  margin-bottom: var(--spacing-md);
+}
+
+.checkout-form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-lg);
+}
+
+.card-element-container {
+  margin-bottom: var(--spacing-md);
+}
+
+.card-element-label {
+  display: block;
+  margin-bottom: var(--spacing-sm);
+  font-weight: 600;
+  color: var(--color-text-primary);
+  font-size: 0.875rem;
+}
+
+.card-element {
+  padding: 0.75rem 1rem;
+  border: 2px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  transition: all var(--transition-base);
+}
+
+.card-element:focus {
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 3px rgba(245, 158, 11, 0.1);
+}
+
+.payment-note {
+  text-align: center;
+  color: var(--color-text-muted);
+  font-size: 0.875rem;
+  margin: 0;
+}
+
+.booking-sidebar {
+  position: sticky;
+  top: calc(70px + var(--spacing-xl));
+}
+
+.price-summary-card h3 {
+  font-size: 1.25rem;
+  margin-bottom: var(--spacing-lg);
+}
+
+.price-breakdown {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-md);
+}
+
+.price-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 0.9375rem;
+}
+
+.price-item span:first-child {
+  color: var(--color-text-secondary);
+}
+
+.price-item span:last-child {
+  font-weight: 600;
+  color: var(--color-text-primary);
+}
+
+.price-divider {
+  height: 1px;
+  background: var(--color-border);
+  margin: var(--spacing-sm) 0;
+}
+
+.price-total {
+  font-size: 1.25rem;
+}
+
+.price-total span:first-child {
+  color: var(--color-text-primary);
+  font-weight: 700;
+}
+
+.price-total span:last-child {
+  color: var(--color-primary);
+  font-weight: 800;
+  font-size: 1.75rem;
+}
+
+@media (max-width: 1024px) {
+  .booking-wrapper {
+    grid-template-columns: 1fr;
+  }
+
+  .booking-sidebar {
+    position: static;
+  }
+
+  .trip-details-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 640px) {
+  .booking-main h1 {
+    font-size: 1.5rem;
+  }
+
+  .route-line {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .route-separator {
+    transform: rotate(90deg);
+  }
+}

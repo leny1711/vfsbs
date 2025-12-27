@@ -1,141 +1,172 @@
-import { useState, useEffect } from 'react';
-import { userAPI } from '../services/api';
+import React, { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
+import { userAPI } from '../services/api';
+import { Button, Card, Input, Loading, Alert } from '../components/ui';
+import './Profile.css';
 
 const Profile = () => {
-  const { user } = useAuth();
+  const { user: authUser } = useAuth();
+  const [profile, setProfile] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [updating, setUpdating] = useState(false);
+  const [error, setError] = useState('');
+  const [successMessage, setSuccessMessage] = useState('');
   const [formData, setFormData] = useState({
     firstName: '',
     lastName: '',
-    phone: '',
-    email: ''
+    email: '',
+    phoneNumber: ''
   });
-  const [loading, setLoading] = useState(false);
-  const [message, setMessage] = useState('');
-  const [error, setError] = useState('');
 
   useEffect(() => {
-    if (user) {
-      setFormData({
-        firstName: user.firstName || '',
-        lastName: user.lastName || '',
-        phone: user.phone || '',
-        email: user.email || ''
-      });
+    fetchProfile();
+  }, []);
+
+  useEffect(() => {
+    if (successMessage) {
+      const timer = setTimeout(() => setSuccessMessage(''), 5000);
+      return () => clearTimeout(timer);
     }
-  }, [user]);
+  }, [successMessage]);
+
+  const fetchProfile = async () => {
+    try {
+      setLoading(true);
+      const response = await userAPI.getProfile();
+      const userData = response.data.user || response.data;
+      setProfile(userData);
+      setFormData({
+        firstName: userData.firstName || '',
+        lastName: userData.lastName || '',
+        email: userData.email || '',
+        phoneNumber: userData.phoneNumber || ''
+      });
+    } catch (err) {
+      setError('Failed to load profile');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleChange = (e) => {
     setFormData({
       ...formData,
       [e.target.name]: e.target.value
     });
+    setError('');
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setMessage('');
     setError('');
-    setLoading(true);
+    setUpdating(true);
 
     try {
       await userAPI.updateProfile(formData);
-      setMessage('Profile updated successfully');
-      
-      // Update user in localStorage
-      const updatedUser = { ...user, ...formData };
-      localStorage.setItem('user', JSON.stringify(updatedUser));
+      setSuccessMessage('Profile updated successfully! ✨');
+      fetchProfile();
     } catch (err) {
       setError(err.response?.data?.message || 'Failed to update profile');
     } finally {
-      setLoading(false);
+      setUpdating(false);
     }
   };
 
-  return (
-    <div className="container" style={{ paddingTop: '40px', maxWidth: '600px' }}>
-      <div className="card">
-        <h2 style={{ marginBottom: '20px' }}>My Profile</h2>
+  if (loading) {
+    return <Loading text="Loading profile..." />;
+  }
 
-        {message && (
-          <div className="success" style={{ marginBottom: '15px', textAlign: 'center', padding: '10px', backgroundColor: '#d4edda', borderRadius: '4px' }}>
-            {message}
-          </div>
+  return (
+    <div className="profile-container">
+      <div className="container container-sm">
+        <div className="page-header">
+          <h1>My Profile 👤</h1>
+          <p>Manage your account information</p>
+        </div>
+
+        {successMessage && (
+          <Alert type="success" onClose={() => setSuccessMessage('')}>
+            {successMessage}
+          </Alert>
         )}
 
         {error && (
-          <div className="error" style={{ marginBottom: '15px', textAlign: 'center', padding: '10px', backgroundColor: '#f8d7da', borderRadius: '4px' }}>
+          <Alert type="error" onClose={() => setError('')}>
             {error}
-          </div>
+          </Alert>
         )}
 
-        <form onSubmit={handleSubmit}>
-          <div className="form-group">
-            <label>First Name</label>
-            <input
-              type="text"
-              name="firstName"
-              value={formData.firstName}
-              onChange={handleChange}
-              required
-            />
+        <Card>
+          <div className="profile-info-card">
+            <div className="profile-avatar">
+              <div className="avatar-circle">
+                {formData.firstName?.[0]}{formData.lastName?.[0]}
+              </div>
+            </div>
+            <div className="profile-summary">
+              <h2>{formData.firstName} {formData.lastName}</h2>
+              <p className="user-role">{profile?.role || 'Customer'}</p>
+              <p className="user-email">{formData.email}</p>
+            </div>
           </div>
+        </Card>
 
-          <div className="form-group">
-            <label>Last Name</label>
-            <input
-              type="text"
-              name="lastName"
-              value={formData.lastName}
-              onChange={handleChange}
-              required
-            />
-          </div>
+        <Card>
+          <h3>Edit Profile</h3>
+          <form onSubmit={handleSubmit} className="profile-form">
+            <div className="form-row">
+              <Input
+                label="First Name"
+                type="text"
+                name="firstName"
+                value={formData.firstName}
+                onChange={handleChange}
+                placeholder="John"
+                required
+              />
+              <Input
+                label="Last Name"
+                type="text"
+                name="lastName"
+                value={formData.lastName}
+                onChange={handleChange}
+                placeholder="Doe"
+                required
+              />
+            </div>
 
-          <div className="form-group">
-            <label>Email</label>
-            <input
+            <Input
+              label="Email Address"
               type="email"
               name="email"
               value={formData.email}
               onChange={handleChange}
-              required
+              placeholder="you@example.com"
               disabled
-              style={{ backgroundColor: '#f8f9fa', cursor: 'not-allowed' }}
             />
-            <small style={{ color: '#666' }}>Email cannot be changed</small>
-          </div>
 
-          <div className="form-group">
-            <label>Phone</label>
-            <input
+            <Input
+              label="Phone Number"
               type="tel"
-              name="phone"
-              value={formData.phone}
+              name="phoneNumber"
+              value={formData.phoneNumber}
               onChange={handleChange}
+              placeholder="+1234567890"
               required
             />
-          </div>
 
-          <div className="form-group">
-            <label>Role</label>
-            <input
-              type="text"
-              value={user?.role || ''}
-              disabled
-              style={{ backgroundColor: '#f8f9fa', cursor: 'not-allowed' }}
-            />
-          </div>
-
-          <button 
-            type="submit" 
-            className="btn btn-primary" 
-            style={{ width: '100%' }}
-            disabled={loading}
-          >
-            {loading ? 'Updating...' : 'Update Profile'}
-          </button>
-        </form>
+            <div className="form-actions">
+              <Button
+                type="submit"
+                variant="primary"
+                size="lg"
+                disabled={updating}
+              >
+                {updating ? 'Saving...' : 'Save Changes'}
+              </Button>
+            </div>
+          </form>
+        </Card>
       </div>
     </div>
   );

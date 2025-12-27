@@ -1,6 +1,7 @@
+import React from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { AuthProvider } from './contexts/AuthContext';
-import { PrivateRoute, AdminRoute } from './components/PrivateRoute';
+import PrivateRoute from './components/PrivateRoute';
 import Navbar from './components/Navbar';
 import Home from './pages/Home';
 import Login from './pages/Login';
@@ -23,35 +24,50 @@ function App() {
           <Route path="/register" element={<Register />} />
           <Route path="/search" element={<Search />} />
           
-          <Route path="/booking/:scheduleId" element={
-            <PrivateRoute>
-              <Booking />
-            </PrivateRoute>
-          } />
+          <Route 
+            path="/booking/:scheduleId" 
+            element={
+              <PrivateRoute>
+                <Booking />
+              </PrivateRoute>
+            } 
+          />
           
-          <Route path="/bookings" element={
-            <PrivateRoute>
-              <MyBookings />
-            </PrivateRoute>
-          } />
+          <Route 
+            path="/my-bookings" 
+            element={
+              <PrivateRoute>
+                <MyBookings />
+              </PrivateRoute>
+            } 
+          />
           
-          <Route path="/profile" element={
-            <PrivateRoute>
-              <Profile />
-            </PrivateRoute>
-          } />
+          <Route 
+            path="/profile" 
+            element={
+              <PrivateRoute>
+                <Profile />
+              </PrivateRoute>
+            } 
+          />
           
-          <Route path="/admin/routes" element={
-            <AdminRoute>
-              <AdminRoutes />
-            </AdminRoute>
-          } />
+          <Route 
+            path="/admin/routes" 
+            element={
+              <PrivateRoute adminOnly={true}>
+                <AdminRoutes />
+              </PrivateRoute>
+            } 
+          />
           
-          <Route path="/admin/schedules" element={
-            <AdminRoute>
-              <AdminSchedules />
-            </AdminRoute>
-          } />
+          <Route 
+            path="/admin/schedules" 
+            element={
+              <PrivateRoute adminOnly={true}>
+                <AdminSchedules />
+              </PrivateRoute>
+            } 
+          />
         </Routes>
       </AuthProvider>
     </Router>
