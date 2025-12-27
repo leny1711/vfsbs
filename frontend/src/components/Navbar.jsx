@@ -1,45 +1,97 @@
+import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
+import { Button } from './ui';
+import './Navbar.css';
 
 const Navbar = () => {
-  const { user, isAuthenticated, isAdmin, logout } = useAuth();
+  const { user, logout, isAdmin } = useAuth();
   const navigate = useNavigate();
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   const handleLogout = () => {
     logout();
     navigate('/login');
+    setMobileMenuOpen(false);
+  };
+
+  const toggleMobileMenu = () => {
+    setMobileMenuOpen(!mobileMenuOpen);
+  };
+
+  const closeMobileMenu = () => {
+    setMobileMenuOpen(false);
   };
 
   return (
-    <nav>
+    <nav className="navbar">
       <div className="container">
-        <Link to="/" className="logo">VFS Bus System</Link>
-        <ul>
-          {isAuthenticated ? (
-            <>
-              <li><Link to="/search">Search</Link></li>
-              <li><Link to="/bookings">My Bookings</Link></li>
-              {isAdmin && (
+        <div className="navbar-content">
+          <Link to="/" className="navbar-logo" onClick={closeMobileMenu}>
+            🚌 VFS Bus
+          </Link>
+
+          <button className="mobile-menu-toggle" onClick={toggleMobileMenu}>
+            {mobileMenuOpen ? '✕' : '☰'}
+          </button>
+
+          <div className={`navbar-menu ${mobileMenuOpen ? 'mobile-open' : ''}`}>
+            <div className="navbar-links">
+              <Link to="/" className="nav-link" onClick={closeMobileMenu}>
+                Home
+              </Link>
+              <Link to="/search" className="nav-link" onClick={closeMobileMenu}>
+                Search
+              </Link>
+              
+              {user ? (
                 <>
-                  <li><Link to="/admin/routes">Routes</Link></li>
-                  <li><Link to="/admin/schedules">Schedules</Link></li>
+                  <Link to="/my-bookings" className="nav-link" onClick={closeMobileMenu}>
+                    My Bookings
+                  </Link>
+                  <Link to="/profile" className="nav-link" onClick={closeMobileMenu}>
+                    Profile
+                  </Link>
+                  {isAdmin && (
+                    <>
+                      <Link to="/admin/routes" className="nav-link admin-link" onClick={closeMobileMenu}>
+                        Routes
+                      </Link>
+                      <Link to="/admin/schedules" className="nav-link admin-link" onClick={closeMobileMenu}>
+                        Schedules
+                      </Link>
+                    </>
+                  )}
+                </>
+              ) : (
+                <>
+                  <Link to="/login" className="nav-link" onClick={closeMobileMenu}>
+                    Login
+                  </Link>
+                  <Link to="/register" className="nav-link" onClick={closeMobileMenu}>
+                    Register
+                  </Link>
                 </>
               )}
-              <li><Link to="/profile">Profile</Link></li>
-              <li>
-                <button onClick={handleLogout} className="btn btn-secondary">
+            </div>
+
+            {user && (
+              <div className="navbar-actions">
+                <div className="user-info">
+                  <span className="user-name">{user.firstName}</span>
+                  {isAdmin && <span className="admin-badge">Admin</span>}
+                </div>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleLogout}
+                >
                   Logout
-                </button>
-              </li>
-            </>
-          ) : (
-            <>
-              <li><Link to="/search">Search</Link></li>
-              <li><Link to="/login">Login</Link></li>
-              <li><Link to="/register">Register</Link></li>
-            </>
-          )}
-        </ul>
+                </Button>
+              </div>
+            )}
+          </div>
+        </div>
       </div>
     </nav>
   );

@@ -1,84 +1,44 @@
-import { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import { routesAPI } from '../../services/api';
+import { Button, Card, Input, Loading, Alert } from '../../components/ui';
+import './AdminRoutes.css';
 
 const AdminRoutes = () => {
   const [routes, setRoutes] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [successMessage, setSuccessMessage] = useState('');
   const [showForm, setShowForm] = useState(false);
   const [editingRoute, setEditingRoute] = useState(null);
   const [formData, setFormData] = useState({
+    name: '',
     origin: '',
     destination: '',
-    distance: '',
-    basePrice: '',
     originLat: '',
     originLng: '',
     destinationLat: '',
-    destinationLng: ''
+    destinationLng: '',
+    distance: '',
+    duration: '',
+    basePrice: ''
   });
-  const mapRef = useRef(null);
-  const [map, setMap] = useState(null);
-  const [markers, setMarkers] = useState([]);
 
   useEffect(() => {
-    loadRoutes();
-    initMap();
+    fetchRoutes();
   }, []);
 
-  const initMap = () => {
-    if (window.google && mapRef.current && !map) {
-      const newMap = new window.google.maps.Map(mapRef.current, {
-        center: { lat: 40.7128, lng: -74.0060 },
-        zoom: 10
-      });
-      setMap(newMap);
-    }
-  };
-
   useEffect(() => {
-    if (map && formData.originLat && formData.originLng) {
-      // Clear previous markers
-      markers.forEach(marker => marker.setMap(null));
-
-      const newMarkers = [];
-      
-      // Add origin marker
-      const originMarker = new window.google.maps.Marker({
-        position: { lat: parseFloat(formData.originLat), lng: parseFloat(formData.originLng) },
-        map: map,
-        label: 'A',
-        title: formData.origin
-      });
-      newMarkers.push(originMarker);
-
-      // Add destination marker if exists
-      if (formData.destinationLat && formData.destinationLng) {
-        const destMarker = new window.google.maps.Marker({
-          position: { lat: parseFloat(formData.destinationLat), lng: parseFloat(formData.destinationLng) },
-          map: map,
-          label: 'B',
-          title: formData.destination
-        });
-        newMarkers.push(destMarker);
-
-        // Fit bounds to show both markers
-        const bounds = new window.google.maps.LatLngBounds();
-        bounds.extend(originMarker.getPosition());
-        bounds.extend(destMarker.getPosition());
-        map.fitBounds(bounds);
-      } else {
-        map.setCenter(originMarker.getPosition());
-      }
-
-      setMarkers(newMarkers);
+    if (successMessage) {
+      const timer = setTimeout(() => setSuccessMessage(''), 5000);
+      return () => clearTimeout(timer);
     }
-  }, [map, formData.originLat, formData.originLng, formData.destinationLat, formData.destinationLng]);
+  }, [successMessage]);
 
-  const loadRoutes = async () => {
+  const fetchRoutes = async () => {
     try {
+      setLoading(true);
       const response = await routesAPI.getAll();
-      setRoutes(response.data.routes || []);
+      setRoutes(response.data.routes || response.data || []);
     } catch (err) {
       setError('Failed to load routes');
     } finally {
@@ -98,35 +58,27 @@ const AdminRoutes = () => {
     setError('');
 
     try {
-      const data = {
+      const routeData = {
         ...formData,
-        distance: parseFloat(formData.distance),
-        basePrice: parseFloat(formData.basePrice),
         originLat: parseFloat(formData.originLat),
         originLng: parseFloat(formData.originLng),
         destinationLat: parseFloat(formData.destinationLat),
-        destinationLng: parseFloat(formData.destinationLng)
+        destinationLng: parseFloat(formData.destinationLng),
+        distance: parseFloat(formData.distance),
+        duration: parseInt(formData.duration),
+        basePrice: parseFloat(formData.basePrice)
       };
 
       if (editingRoute) {
-        await routesAPI.update(editingRoute.id, data);
+        await routesAPI.update(editingRoute.id, routeData);
+        setSuccessMessage('Route updated successfully! ✨');
       } else {
-        await routesAPI.create(data);
+        await routesAPI.create(routeData);
+        setSuccessMessage('Route created successfully! 🚀');
       }
 
-      setShowForm(false);
-      setEditingRoute(null);
-      setFormData({
-        origin: '',
-        destination: '',
-        distance: '',
-        basePrice: '',
-        originLat: '',
-        originLng: '',
-        destinationLat: '',
-        destinationLng: ''
-      });
-      await loadRoutes();
+      resetForm();
+      fetchRoutes();
     } catch (err) {
       setError(err.response?.data?.message || 'Failed to save route');
     }
@@ -135,217 +87,239 @@ const AdminRoutes = () => {
   const handleEdit = (route) => {
     setEditingRoute(route);
     setFormData({
+      name: route.name,
       origin: route.origin,
       destination: route.destination,
-      distance: route.distance.toString(),
-      basePrice: route.basePrice.toString(),
       originLat: route.originLat.toString(),
       originLng: route.originLng.toString(),
       destinationLat: route.destinationLat.toString(),
-      destinationLng: route.destinationLng.toString()
+      destinationLng: route.destinationLng.toString(),
+      distance: route.distance.toString(),
+      duration: route.duration.toString(),
+      basePrice: route.basePrice.toString()
     });
     setShowForm(true);
   };
 
-  const handleDelete = async (id) => {
-    if (!confirm('Are you sure you want to delete this route?')) {
+  const handleDelete = async (routeId) => {
+    if (!window.confirm('Are you sure you want to delete this route?')) {
       return;
     }
 
     try {
-      await routesAPI.delete(id);
-      await loadRoutes();
+      await routesAPI.delete(routeId);
+      setSuccessMessage('Route deleted successfully');
+      fetchRoutes();
     } catch (err) {
-      alert(err.response?.data?.message || 'Failed to delete route');
+      setError(err.response?.data?.message || 'Failed to delete route');
     }
   };
 
-  const handleCancel = () => {
-    setShowForm(false);
-    setEditingRoute(null);
+  const resetForm = () => {
     setFormData({
+      name: '',
       origin: '',
       destination: '',
-      distance: '',
-      basePrice: '',
       originLat: '',
       originLng: '',
       destinationLat: '',
-      destinationLng: ''
+      destinationLng: '',
+      distance: '',
+      duration: '',
+      basePrice: ''
     });
+    setEditingRoute(null);
+    setShowForm(false);
   };
 
   if (loading) {
-    return <div className="loading">Loading...</div>;
+    return <Loading text="Loading routes..." />;
   }
 
   return (
-    <div className="container" style={{ paddingTop: '40px' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
-        <h2>Manage Routes</h2>
-        {!showForm && (
-          <button onClick={() => setShowForm(true)} className="btn btn-primary">
-            Add New Route
-          </button>
-        )}
-      </div>
-
-      {error && (
-        <div className="card" style={{ backgroundColor: '#f8d7da', color: '#721c24', marginBottom: '20px' }}>
-          {error}
+    <div className="admin-routes-container">
+      <div className="container">
+        <div className="page-header">
+          <h1>Manage Routes 🗺️</h1>
+          <Button
+            variant="primary"
+            onClick={() => setShowForm(!showForm)}
+          >
+            {showForm ? 'Cancel' : '+ Add New Route'}
+          </Button>
         </div>
-      )}
 
-      {showForm && (
-        <div className="card" style={{ marginBottom: '30px' }}>
-          <h3 style={{ marginBottom: '20px' }}>{editingRoute ? 'Edit Route' : 'Add New Route'}</h3>
-          
-          <form onSubmit={handleSubmit}>
-            <div className="grid grid-2">
-              <div className="form-group">
-                <label>Origin</label>
-                <input
-                  type="text"
+        {successMessage && (
+          <Alert type="success" onClose={() => setSuccessMessage('')}>
+            {successMessage}
+          </Alert>
+        )}
+
+        {error && (
+          <Alert type="error" onClose={() => setError('')}>
+            {error}
+          </Alert>
+        )}
+
+        {showForm && (
+          <Card className="form-card">
+            <h3>{editingRoute ? 'Edit Route' : 'Create New Route'}</h3>
+            <form onSubmit={handleSubmit} className="admin-form">
+              <Input
+                label="Route Name"
+                name="name"
+                value={formData.name}
+                onChange={handleChange}
+                placeholder="e.g., New York to Boston"
+                required
+              />
+
+              <div className="form-row">
+                <Input
+                  label="Origin City"
                   name="origin"
                   value={formData.origin}
                   onChange={handleChange}
+                  placeholder="New York, NY"
                   required
-                  placeholder="e.g., New York"
                 />
-              </div>
-
-              <div className="form-group">
-                <label>Destination</label>
-                <input
-                  type="text"
+                <Input
+                  label="Destination City"
                   name="destination"
                   value={formData.destination}
                   onChange={handleChange}
-                  required
-                  placeholder="e.g., Boston"
-                />
-              </div>
-
-              <div className="form-group">
-                <label>Distance (km)</label>
-                <input
-                  type="number"
-                  step="0.1"
-                  name="distance"
-                  value={formData.distance}
-                  onChange={handleChange}
+                  placeholder="Boston, MA"
                   required
                 />
               </div>
 
-              <div className="form-group">
-                <label>Base Price ($)</label>
-                <input
-                  type="number"
-                  step="0.01"
-                  name="basePrice"
-                  value={formData.basePrice}
-                  onChange={handleChange}
-                  required
-                />
-              </div>
-
-              <div className="form-group">
-                <label>Origin Latitude</label>
-                <input
+              <div className="form-row">
+                <Input
+                  label="Origin Latitude"
+                  name="originLat"
                   type="number"
                   step="any"
-                  name="originLat"
                   value={formData.originLat}
                   onChange={handleChange}
+                  placeholder="40.7128"
                   required
-                  placeholder="e.g., 40.7128"
                 />
-              </div>
-
-              <div className="form-group">
-                <label>Origin Longitude</label>
-                <input
+                <Input
+                  label="Origin Longitude"
+                  name="originLng"
                   type="number"
                   step="any"
-                  name="originLng"
                   value={formData.originLng}
                   onChange={handleChange}
+                  placeholder="-74.0060"
                   required
-                  placeholder="e.g., -74.0060"
                 />
               </div>
 
-              <div className="form-group">
-                <label>Destination Latitude</label>
-                <input
+              <div className="form-row">
+                <Input
+                  label="Destination Latitude"
+                  name="destinationLat"
                   type="number"
                   step="any"
-                  name="destinationLat"
                   value={formData.destinationLat}
                   onChange={handleChange}
+                  placeholder="42.3601"
                   required
-                  placeholder="e.g., 42.3601"
                 />
-              </div>
-
-              <div className="form-group">
-                <label>Destination Longitude</label>
-                <input
+                <Input
+                  label="Destination Longitude"
+                  name="destinationLng"
                   type="number"
                   step="any"
-                  name="destinationLng"
                   value={formData.destinationLng}
                   onChange={handleChange}
+                  placeholder="-71.0589"
                   required
-                  placeholder="e.g., -71.0589"
                 />
               </div>
-            </div>
 
-            <div ref={mapRef} className="map-container" style={{ marginBottom: '20px' }}></div>
+              <div className="form-row">
+                <Input
+                  label="Distance (miles)"
+                  name="distance"
+                  type="number"
+                  step="any"
+                  value={formData.distance}
+                  onChange={handleChange}
+                  placeholder="215.3"
+                  required
+                />
+                <Input
+                  label="Duration (minutes)"
+                  name="duration"
+                  type="number"
+                  value={formData.duration}
+                  onChange={handleChange}
+                  placeholder="240"
+                  required
+                />
+                <Input
+                  label="Base Price ($)"
+                  name="basePrice"
+                  type="number"
+                  step="any"
+                  value={formData.basePrice}
+                  onChange={handleChange}
+                  placeholder="45.00"
+                  required
+                />
+              </div>
 
-            <div style={{ display: 'flex', gap: '10px' }}>
-              <button type="submit" className="btn btn-primary">
-                {editingRoute ? 'Update Route' : 'Create Route'}
-              </button>
-              <button type="button" onClick={handleCancel} className="btn btn-secondary">
-                Cancel
-              </button>
-            </div>
-          </form>
+              <div className="form-actions">
+                <Button type="submit" variant="primary">
+                  {editingRoute ? 'Update Route' : 'Create Route'}
+                </Button>
+                <Button type="button" variant="secondary" onClick={resetForm}>
+                  Cancel
+                </Button>
+              </div>
+            </form>
+          </Card>
+        )}
+
+        <div className="routes-grid">
+          {routes.map((route) => (
+            <Card key={route.id} className="route-card" hover>
+              <h3>{route.name}</h3>
+              <div className="route-info">
+                <div className="route-path">
+                  <span>{route.origin}</span>
+                  <span className="arrow">→</span>
+                  <span>{route.destination}</span>
+                </div>
+                <div className="route-details">
+                  <div className="detail">
+                    <span className="label">Distance:</span>
+                    <span className="value">{route.distance} mi</span>
+                  </div>
+                  <div className="detail">
+                    <span className="label">Duration:</span>
+                    <span className="value">{Math.floor(route.duration / 60)}h {route.duration % 60}m</span>
+                  </div>
+                  <div className="detail">
+                    <span className="label">Base Price:</span>
+                    <span className="value price">${route.basePrice.toFixed(2)}</span>
+                  </div>
+                </div>
+              </div>
+              <div className="route-actions">
+                <Button variant="secondary" size="sm" onClick={() => handleEdit(route)}>
+                  Edit
+                </Button>
+                <Button variant="danger" size="sm" onClick={() => handleDelete(route.id)}>
+                  Delete
+                </Button>
+              </div>
+            </Card>
+          ))}
         </div>
-      )}
-
-      <div className="grid grid-2">
-        {routes.map((route) => (
-          <div key={route.id} className="card">
-            <h4 style={{ marginBottom: '10px' }}>
-              {route.origin} → {route.destination}
-            </h4>
-            <div style={{ marginBottom: '15px' }}>
-              <div><strong>Distance:</strong> {route.distance} km</div>
-              <div><strong>Base Price:</strong> ${route.basePrice}</div>
-              <div><strong>Origin:</strong> {route.originLat}, {route.originLng}</div>
-              <div><strong>Destination:</strong> {route.destinationLat}, {route.destinationLng}</div>
-            </div>
-            <div style={{ display: 'flex', gap: '10px' }}>
-              <button onClick={() => handleEdit(route)} className="btn btn-primary" style={{ flex: 1 }}>
-                Edit
-              </button>
-              <button onClick={() => handleDelete(route.id)} className="btn btn-danger" style={{ flex: 1 }}>
-                Delete
-              </button>
-            </div>
-          </div>
-        ))}
       </div>
-
-      {routes.length === 0 && (
-        <div className="card" style={{ textAlign: 'center', padding: '40px' }}>
-          <p style={{ fontSize: '18px', color: '#666' }}>No routes found. Add your first route above.</p>
-        </div>
-      )}
     </div>
   );
 };

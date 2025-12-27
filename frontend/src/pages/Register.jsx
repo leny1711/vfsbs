@@ -1,26 +1,29 @@
-import { useState } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import React, { useState } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
+import { Button, Input, Card, Alert } from '../components/ui';
+import './Auth.css';
 
 const Register = () => {
+  const navigate = useNavigate();
+  const { register } = useAuth();
   const [formData, setFormData] = useState({
     email: '',
     password: '',
     confirmPassword: '',
     firstName: '',
     lastName: '',
-    phone: ''
+    phoneNumber: ''
   });
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
-  const { register } = useAuth();
-  const navigate = useNavigate();
 
   const handleChange = (e) => {
     setFormData({
       ...formData,
       [e.target.name]: e.target.value
     });
+    setError('');
   };
 
   const handleSubmit = async (e) => {
@@ -33,7 +36,7 @@ const Register = () => {
     }
 
     if (formData.password.length < 6) {
-      setError('Password must be at least 6 characters');
+      setError('Password must be at least 6 characters long');
       return;
     }
 
@@ -42,107 +45,107 @@ const Register = () => {
     const { confirmPassword, ...registerData } = formData;
     const result = await register(registerData);
     
-    setLoading(false);
     if (result.success) {
       navigate('/');
     } else {
       setError(result.error);
+      setLoading(false);
     }
   };
 
   return (
-    <div className="container" style={{ paddingTop: '40px', maxWidth: '500px' }}>
-      <div className="card">
-        <h2 style={{ marginBottom: '20px', textAlign: 'center' }}>Register</h2>
-        
-        {error && <div className="error" style={{ marginBottom: '15px', textAlign: 'center' }}>{error}</div>}
-        
-        <form onSubmit={handleSubmit}>
-          <div className="form-group">
-            <label>First Name</label>
-            <input
-              type="text"
-              name="firstName"
-              value={formData.firstName}
-              onChange={handleChange}
-              required
-              placeholder="Enter your first name"
-            />
+    <div className="auth-container">
+      <div className="auth-wrapper">
+        <Card className="auth-card">
+          <div className="auth-header">
+            <h1>Get Started! ✨</h1>
+            <p>Create your account and start booking</p>
           </div>
 
-          <div className="form-group">
-            <label>Last Name</label>
-            <input
-              type="text"
-              name="lastName"
-              value={formData.lastName}
-              onChange={handleChange}
-              required
-              placeholder="Enter your last name"
-            />
-          </div>
+          {error && <Alert type="error">{error}</Alert>}
 
-          <div className="form-group">
-            <label>Email</label>
-            <input
+          <form onSubmit={handleSubmit} className="auth-form">
+            <div className="form-row">
+              <Input
+                label="First Name"
+                type="text"
+                name="firstName"
+                value={formData.firstName}
+                onChange={handleChange}
+                placeholder="John"
+                required
+              />
+              <Input
+                label="Last Name"
+                type="text"
+                name="lastName"
+                value={formData.lastName}
+                onChange={handleChange}
+                placeholder="Doe"
+                required
+              />
+            </div>
+
+            <Input
+              label="Email Address"
               type="email"
               name="email"
               value={formData.email}
               onChange={handleChange}
+              placeholder="you@example.com"
               required
-              placeholder="Enter your email"
             />
-          </div>
 
-          <div className="form-group">
-            <label>Phone</label>
-            <input
+            <Input
+              label="Phone Number"
               type="tel"
-              name="phone"
-              value={formData.phone}
+              name="phoneNumber"
+              value={formData.phoneNumber}
               onChange={handleChange}
+              placeholder="+1234567890"
               required
-              placeholder="Enter your phone number"
             />
-          </div>
 
-          <div className="form-group">
-            <label>Password</label>
-            <input
+            <Input
+              label="Password"
               type="password"
               name="password"
               value={formData.password}
               onChange={handleChange}
+              placeholder="••••••••"
               required
-              placeholder="Enter your password"
             />
-          </div>
 
-          <div className="form-group">
-            <label>Confirm Password</label>
-            <input
+            <Input
+              label="Confirm Password"
               type="password"
               name="confirmPassword"
               value={formData.confirmPassword}
               onChange={handleChange}
+              placeholder="••••••••"
               required
-              placeholder="Confirm your password"
             />
+
+            <Button
+              type="submit"
+              variant="primary"
+              size="lg"
+              fullWidth
+              disabled={loading}
+            >
+              {loading ? 'Creating Account...' : 'Create Account'}
+            </Button>
+          </form>
+
+          <div className="auth-footer">
+            <p>
+              Already have an account?{' '}
+              <Link to="/login" className="auth-link">
+                Sign in here
+              </Link>
+            </p>
           </div>
-
-          <button 
-            type="submit" 
-            className="btn btn-primary" 
-            style={{ width: '100%' }}
-            disabled={loading}
-          >
-            {loading ? 'Loading...' : 'Register'}
-          </button>
-        </form>
-
-        <p style={{ marginTop: '20px', textAlign: 'center' }}>
-          Already have an account? <Link to="/login">Login here</Link>
-        </p>
+        </Card>
       </div>
     </div>
   );

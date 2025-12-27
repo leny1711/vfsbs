@@ -1,35 +1,47 @@
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { schedulesAPI, routesAPI } from '../../services/api';
+import { Button, Card, Input, Select, Loading, Alert } from '../../components/ui';
 import { format } from 'date-fns';
+import './AdminSchedules.css';
 
 const AdminSchedules = () => {
   const [schedules, setSchedules] = useState([]);
   const [routes, setRoutes] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [successMessage, setSuccessMessage] = useState('');
   const [showForm, setShowForm] = useState(false);
   const [editingSchedule, setEditingSchedule] = useState(null);
   const [formData, setFormData] = useState({
     routeId: '',
     departureTime: '',
     arrivalTime: '',
-    price: '',
+    busNumber: '',
     totalSeats: '40',
+    price: '',
     status: 'SCHEDULED'
   });
 
   useEffect(() => {
-    loadData();
+    fetchData();
   }, []);
 
-  const loadData = async () => {
+  useEffect(() => {
+    if (successMessage) {
+      const timer = setTimeout(() => setSuccessMessage(''), 5000);
+      return () => clearTimeout(timer);
+    }
+  }, [successMessage]);
+
+  const fetchData = async () => {
     try {
+      setLoading(true);
       const [schedulesRes, routesRes] = await Promise.all([
         schedulesAPI.getAll(),
         routesAPI.getAll()
       ]);
-      setSchedules(schedulesRes.data.schedules || []);
-      setRoutes(routesRes.data.routes || []);
+      setSchedules(schedulesRes.data.schedules || schedulesRes.data || []);
+      setRoutes(routesRes.data.routes || routesRes.data || []);
     } catch (err) {
       setError('Failed to load data');
     } finally {
@@ -49,32 +61,25 @@ const AdminSchedules = () => {
     setError('');
 
     try {
-      const data = {
-        routeId: parseInt(formData.routeId),
-        departureTime: new Date(formData.departureTime).toISOString(),
-        arrivalTime: new Date(formData.arrivalTime).toISOString(),
-        price: parseFloat(formData.price),
+      const scheduleData = {
+        ...formData,
         totalSeats: parseInt(formData.totalSeats),
-        status: formData.status
+        availableSeats: parseInt(formData.totalSeats),
+        price: parseFloat(formData.price),
+        departureTime: new Date(formData.departureTime).toISOString(),
+        arrivalTime: new Date(formData.arrivalTime).toISOString()
       };
 
       if (editingSchedule) {
-        await schedulesAPI.update(editingSchedule.id, data);
+        await schedulesAPI.update(editingSchedule.id, scheduleData);
+        setSuccessMessage('Schedule updated successfully! ✨');
       } else {
-        await schedulesAPI.create(data);
+        await schedulesAPI.create(scheduleData);
+        setSuccessMessage('Schedule created successfully! 🚀');
       }
 
-      setShowForm(false);
-      setEditingSchedule(null);
-      setFormData({
-        routeId: '',
-        departureTime: '',
-        arrivalTime: '',
-        price: '',
-        totalSeats: '40',
-        status: 'SCHEDULED'
-      });
-      await loadData();
+      resetForm();
+      fetchData();
     } catch (err) {
       setError(err.response?.data?.message || 'Failed to save schedule');
     }
@@ -83,214 +88,242 @@ const AdminSchedules = () => {
   const handleEdit = (schedule) => {
     setEditingSchedule(schedule);
     setFormData({
-      routeId: schedule.routeId.toString(),
-      departureTime: schedule.departureTime ? new Date(schedule.departureTime).toISOString().slice(0, 16) : '',
-      arrivalTime: schedule.arrivalTime ? new Date(schedule.arrivalTime).toISOString().slice(0, 16) : '',
-      price: schedule.price.toString(),
+      routeId: schedule.routeId,
+      departureTime: format(new Date(schedule.departureTime), "yyyy-MM-dd'T'HH:mm"),
+      arrivalTime: format(new Date(schedule.arrivalTime), "yyyy-MM-dd'T'HH:mm"),
+      busNumber: schedule.busNumber,
       totalSeats: schedule.totalSeats.toString(),
+      price: schedule.price.toString(),
       status: schedule.status
     });
     setShowForm(true);
   };
 
-  const handleDelete = async (id) => {
-    if (!confirm('Are you sure you want to cancel this schedule?')) {
+  const handleDelete = async (scheduleId) => {
+    if (!window.confirm('Are you sure you want to delete this schedule?')) {
       return;
     }
 
     try {
-      await schedulesAPI.delete(id);
-      await loadData();
+      await schedulesAPI.delete(scheduleId);
+      setSuccessMessage('Schedule deleted successfully');
+      fetchData();
     } catch (err) {
-      alert(err.response?.data?.message || 'Failed to cancel schedule');
+      setError(err.response?.data?.message || 'Failed to delete schedule');
     }
   };
 
-  const handleCancel = () => {
-    setShowForm(false);
-    setEditingSchedule(null);
+  const resetForm = () => {
     setFormData({
       routeId: '',
       departureTime: '',
       arrivalTime: '',
-      price: '',
+      busNumber: '',
       totalSeats: '40',
+      price: '',
       status: 'SCHEDULED'
     });
+    setEditingSchedule(null);
+    setShowForm(false);
+  };
+
+  const getStatusBadge = (status) => {
+    const badges = {
+      SCHEDULED: { text: 'Scheduled', className: 'status-scheduled' },
+      CANCELLED: { text: 'Cancelled', className: 'status-cancelled' },
+      COMPLETED: { text: 'Completed', className: 'status-completed' }
+    };
+    return badges[status] || { text: status, className: 'status-default' };
   };
 
   if (loading) {
-    return <div className="loading">Loading...</div>;
+    return <Loading text="Loading schedules..." />;
   }
 
   return (
-    <div className="container" style={{ paddingTop: '40px' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
-        <h2>Manage Schedules</h2>
-        {!showForm && (
-          <button onClick={() => setShowForm(true)} className="btn btn-primary">
-            Add New Schedule
-          </button>
-        )}
-      </div>
-
-      {error && (
-        <div className="card" style={{ backgroundColor: '#f8d7da', color: '#721c24', marginBottom: '20px' }}>
-          {error}
+    <div className="admin-schedules-container">
+      <div className="container">
+        <div className="page-header">
+          <h1>Manage Schedules 📅</h1>
+          <Button
+            variant="primary"
+            onClick={() => setShowForm(!showForm)}
+          >
+            {showForm ? 'Cancel' : '+ Add New Schedule'}
+          </Button>
         </div>
-      )}
 
-      {showForm && (
-        <div className="card" style={{ marginBottom: '30px' }}>
-          <h3 style={{ marginBottom: '20px' }}>{editingSchedule ? 'Edit Schedule' : 'Add New Schedule'}</h3>
-          
-          <form onSubmit={handleSubmit}>
-            <div className="grid grid-2">
-              <div className="form-group">
-                <label>Route</label>
-                <select
-                  name="routeId"
-                  value={formData.routeId}
-                  onChange={handleChange}
-                  required
-                >
-                  <option value="">Select a route</option>
-                  {routes.map(route => (
-                    <option key={route.id} value={route.id}>
-                      {route.origin} → {route.destination}
-                    </option>
-                  ))}
-                </select>
-              </div>
+        {successMessage && (
+          <Alert type="success" onClose={() => setSuccessMessage('')}>
+            {successMessage}
+          </Alert>
+        )}
 
-              <div className="form-group">
-                <label>Status</label>
-                <select
-                  name="status"
-                  value={formData.status}
-                  onChange={handleChange}
-                  required
-                >
-                  <option value="SCHEDULED">Scheduled</option>
-                  <option value="CANCELLED">Cancelled</option>
-                  <option value="COMPLETED">Completed</option>
-                </select>
-              </div>
+        {error && (
+          <Alert type="error" onClose={() => setError('')}>
+            {error}
+          </Alert>
+        )}
 
-              <div className="form-group">
-                <label>Departure Time</label>
-                <input
-                  type="datetime-local"
+        {showForm && (
+          <Card className="form-card">
+            <h3>{editingSchedule ? 'Edit Schedule' : 'Create New Schedule'}</h3>
+            <form onSubmit={handleSubmit} className="admin-form">
+              <Select
+                label="Route"
+                name="routeId"
+                value={formData.routeId}
+                onChange={handleChange}
+                options={[
+                  { value: '', label: 'Select a route' },
+                  ...routes.map(route => ({
+                    value: route.id,
+                    label: route.name
+                  }))
+                ]}
+                required
+              />
+
+              <div className="form-row">
+                <Input
+                  label="Departure Time"
                   name="departureTime"
+                  type="datetime-local"
                   value={formData.departureTime}
                   onChange={handleChange}
                   required
                 />
-              </div>
-
-              <div className="form-group">
-                <label>Arrival Time</label>
-                <input
-                  type="datetime-local"
+                <Input
+                  label="Arrival Time"
                   name="arrivalTime"
+                  type="datetime-local"
                   value={formData.arrivalTime}
                   onChange={handleChange}
                   required
                 />
               </div>
 
-              <div className="form-group">
-                <label>Price ($)</label>
-                <input
-                  type="number"
-                  step="0.01"
-                  name="price"
-                  value={formData.price}
+              <div className="form-row">
+                <Input
+                  label="Bus Number"
+                  name="busNumber"
+                  value={formData.busNumber}
                   onChange={handleChange}
+                  placeholder="BUS-001"
                   required
                 />
-              </div>
-
-              <div className="form-group">
-                <label>Total Seats</label>
-                <input
-                  type="number"
+                <Input
+                  label="Total Seats"
                   name="totalSeats"
+                  type="number"
                   value={formData.totalSeats}
                   onChange={handleChange}
-                  required
                   min="1"
+                  required
+                />
+                <Input
+                  label="Price ($)"
+                  name="price"
+                  type="number"
+                  step="any"
+                  value={formData.price}
+                  onChange={handleChange}
+                  placeholder="45.00"
+                  required
                 />
               </div>
-            </div>
 
-            <div style={{ display: 'flex', gap: '10px' }}>
-              <button type="submit" className="btn btn-primary">
-                {editingSchedule ? 'Update Schedule' : 'Create Schedule'}
-              </button>
-              <button type="button" onClick={handleCancel} className="btn btn-secondary">
-                Cancel
-              </button>
-            </div>
-          </form>
+              <Select
+                label="Status"
+                name="status"
+                value={formData.status}
+                onChange={handleChange}
+                options={[
+                  { value: 'SCHEDULED', label: 'Scheduled' },
+                  { value: 'CANCELLED', label: 'Cancelled' },
+                  { value: 'COMPLETED', label: 'Completed' }
+                ]}
+                required
+              />
+
+              <div className="form-actions">
+                <Button type="submit" variant="primary">
+                  {editingSchedule ? 'Update Schedule' : 'Create Schedule'}
+                </Button>
+                <Button type="button" variant="secondary" onClick={resetForm}>
+                  Cancel
+                </Button>
+              </div>
+            </form>
+          </Card>
+        )}
+
+        <div className="schedules-list">
+          {schedules.map((schedule) => {
+            const statusBadge = getStatusBadge(schedule.status);
+            return (
+              <Card key={schedule.id} className="schedule-card" hover>
+                <div className="schedule-header">
+                  <div>
+                    <h3>{schedule.route?.name || 'Route'}</h3>
+                    <div className="route-path">
+                      <span>{schedule.route?.origin}</span>
+                      <span className="arrow">→</span>
+                      <span>{schedule.route?.destination}</span>
+                    </div>
+                  </div>
+                  <span className={`status-badge ${statusBadge.className}`}>
+                    {statusBadge.text}
+                  </span>
+                </div>
+
+                <div className="schedule-info">
+                  <div className="info-row">
+                    <div className="info-item">
+                      <span className="label">Departure</span>
+                      <span className="value">
+                        {format(new Date(schedule.departureTime), 'MMM dd, yyyy HH:mm')}
+                      </span>
+                    </div>
+                    <div className="info-item">
+                      <span className="label">Arrival</span>
+                      <span className="value">
+                        {format(new Date(schedule.arrivalTime), 'MMM dd, yyyy HH:mm')}
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className="info-row">
+                    <div className="info-item">
+                      <span className="label">Bus Number</span>
+                      <span className="value">{schedule.busNumber}</span>
+                    </div>
+                    <div className="info-item">
+                      <span className="label">Seats</span>
+                      <span className="value">
+                        {schedule.availableSeats} / {schedule.totalSeats}
+                      </span>
+                    </div>
+                    <div className="info-item">
+                      <span className="label">Price</span>
+                      <span className="value price">${schedule.price.toFixed(2)}</span>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="schedule-actions">
+                  <Button variant="secondary" size="sm" onClick={() => handleEdit(schedule)}>
+                    Edit
+                  </Button>
+                  <Button variant="danger" size="sm" onClick={() => handleDelete(schedule.id)}>
+                    Delete
+                  </Button>
+                </div>
+              </Card>
+            );
+          })}
         </div>
-      )}
-
-      <div className="grid grid-2">
-        {schedules.map((schedule) => (
-          <div key={schedule.id} className="card">
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start', marginBottom: '10px' }}>
-              <h4 style={{ fontSize: '18px' }}>
-                {schedule.route?.origin} → {schedule.route?.destination}
-              </h4>
-              <span style={{
-                padding: '4px 12px',
-                borderRadius: '12px',
-                fontSize: '12px',
-                fontWeight: 'bold',
-                backgroundColor: schedule.status === 'SCHEDULED' ? '#d4edda' : 
-                               schedule.status === 'CANCELLED' ? '#f8d7da' : '#fff3cd',
-                color: schedule.status === 'SCHEDULED' ? '#155724' : 
-                       schedule.status === 'CANCELLED' ? '#721c24' : '#856404'
-              }}>
-                {schedule.status}
-              </span>
-            </div>
-            
-            <div style={{ marginBottom: '15px' }}>
-              <div style={{ marginBottom: '5px' }}>
-                <strong>Departure:</strong><br/>
-                {format(new Date(schedule.departureTime), 'MMM dd, yyyy HH:mm')}
-              </div>
-              <div style={{ marginBottom: '5px' }}>
-                <strong>Arrival:</strong><br/>
-                {format(new Date(schedule.arrivalTime), 'MMM dd, yyyy HH:mm')}
-              </div>
-              <div style={{ marginBottom: '5px' }}>
-                <strong>Price:</strong> ${schedule.price}
-              </div>
-              <div style={{ marginBottom: '5px' }}>
-                <strong>Seats:</strong> {schedule.availableSeats} / {schedule.totalSeats}
-              </div>
-            </div>
-
-            <div style={{ display: 'flex', gap: '10px' }}>
-              <button onClick={() => handleEdit(schedule)} className="btn btn-primary" style={{ flex: 1 }}>
-                Edit
-              </button>
-              <button onClick={() => handleDelete(schedule.id)} className="btn btn-danger" style={{ flex: 1 }}>
-                Cancel
-              </button>
-            </div>
-          </div>
-        ))}
       </div>
-
-      {schedules.length === 0 && (
-        <div className="card" style={{ textAlign: 'center', padding: '40px' }}>
-          <p style={{ fontSize: '18px', color: '#666' }}>No schedules found. Add your first schedule above.</p>
-        </div>
-      )}
     </div>
   );
 };

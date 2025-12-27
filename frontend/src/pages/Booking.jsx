@@ -1,28 +1,23 @@
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { loadStripe } from '@stripe/stripe-js';
 import { Elements, CardElement, useStripe, useElements } from '@stripe/react-stripe-js';
 import { schedulesAPI, bookingsAPI, paymentsAPI } from '../services/api';
+import { Button, Card, Loading, Alert, Input } from '../components/ui';
 import { format } from 'date-fns';
+import './Booking.css';
 
-const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY || 'pk_test_placeholder');
+const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY);
 
-const BookingForm = ({ schedule }) => {
-  const [seats, setSeats] = useState(1);
-  const [passengerName, setPassengerName] = useState('');
-  const [passengerPhone, setPassengerPhone] = useState('');
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
-  const [processing, setProcessing] = useState(false);
+const CheckoutForm = ({ schedule, numSeats, totalPrice, onSuccess }) => {
   const stripe = useStripe();
   const elements = useElements();
-  const navigate = useNavigate();
-
-  const totalPrice = schedule.price * seats;
+  const [processing, setProcessing] = useState(false);
+  const [error, setError] = useState('');
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    
+
     if (!stripe || !elements) {
       return;
     }
@@ -31,33 +26,19 @@ const BookingForm = ({ schedule }) => {
     setError('');
 
     try {
-      // Create booking
-      const bookingResponse = await bookingsAPI.create({
-        scheduleId: schedule.id,
-        seats,
-        passengerName,
-        passengerPhone,
-        totalPrice
-      });
-
-      const booking = bookingResponse.data.booking;
-
-      // Create payment intent
       const intentResponse = await paymentsAPI.createIntent({
-        bookingId: booking.id
+        scheduleId: schedule.id,
+        numSeats,
+        amount: totalPrice * 100
       });
 
-      const { clientSecret } = intentResponse.data;
+      const clientSecret = intentResponse.data.clientSecret;
 
-      // Confirm payment
-      const { error: stripeError, paymentIntent } = await stripe.confirmCardPayment(
-        clientSecret,
-        {
-          payment_method: {
-            card: elements.getElement(CardElement)
-          }
-        }
-      );
+      const { error: stripeError, paymentIntent } = await stripe.confirmCardPayment(clientSecret, {
+        payment_method: {
+          card: elements.getElement(CardElement),
+        },
+      });
 
       if (stripeError) {
         setError(stripeError.message);
@@ -65,103 +46,61 @@ const BookingForm = ({ schedule }) => {
         return;
       }
 
-      // Confirm payment on backend
-      await paymentsAPI.confirm({
-        paymentId: intentResponse.data.payment.id
-      });
+      if (paymentIntent.status === 'succeeded') {
+        const bookingResponse = await bookingsAPI.create({
+          scheduleId: schedule.id,
+          numSeats,
+          paymentIntentId: paymentIntent.id
+        });
 
-      navigate('/bookings');
+        await paymentsAPI.confirm({
+          paymentIntentId: paymentIntent.id,
+          bookingId: bookingResponse.data.booking?.id || bookingResponse.data.id
+        });
+
+        onSuccess(bookingResponse.data.booking || bookingResponse.data);
+      }
     } catch (err) {
-      setError(err.response?.data?.message || 'Booking failed');
+      setError(err.response?.data?.message || 'Payment failed. Please try again.');
       setProcessing(false);
     }
   };
 
   return (
-    <form onSubmit={handleSubmit}>
-      <div className="form-group">
-        <label>Number of Seats</label>
-        <input
-          type="number"
-          value={seats}
-          onChange={(e) => setSeats(parseInt(e.target.value))}
-          min="1"
-          max={schedule.availableSeats}
-          required
-        />
-      </div>
+    <form onSubmit={handleSubmit} className="checkout-form">
+      {error && <Alert type="error">{error}</Alert>}
 
-      <div className="form-group">
-        <label>Passenger Name</label>
-        <input
-          type="text"
-          value={passengerName}
-          onChange={(e) => setPassengerName(e.target.value)}
-          required
-          placeholder="Enter passenger name"
-        />
-      </div>
-
-      <div className="form-group">
-        <label>Passenger Phone</label>
-        <input
-          type="tel"
-          value={passengerPhone}
-          onChange={(e) => setPassengerPhone(e.target.value)}
-          required
-          placeholder="Enter passenger phone"
-        />
-      </div>
-
-      <div className="card" style={{ backgroundColor: '#f8f9fa', marginBottom: '20px' }}>
-        <h4 style={{ marginBottom: '10px' }}>Booking Summary</h4>
-        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '5px' }}>
-          <span>Price per seat:</span>
-          <span>${schedule.price}</span>
-        </div>
-        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '5px' }}>
-          <span>Number of seats:</span>
-          <span>{seats}</span>
-        </div>
-        <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 'bold', fontSize: '18px', marginTop: '10px', paddingTop: '10px', borderTop: '1px solid #ddd' }}>
-          <span>Total:</span>
-          <span>${totalPrice}</span>
-        </div>
-      </div>
-
-      <div className="form-group">
-        <label>Payment Details</label>
-        <div style={{ padding: '10px', border: '1px solid #ddd', borderRadius: '4px' }}>
-          <CardElement options={{
+      <div className="card-element-container">
+        <label className="card-element-label">Card Details</label>
+        <CardElement
+          options={{
             style: {
               base: {
                 fontSize: '16px',
-                color: '#424770',
+                color: '#171717',
+                fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", "Roboto", sans-serif',
                 '::placeholder': {
-                  color: '#aab7c4',
+                  color: '#737373',
                 },
               },
-              invalid: {
-                color: '#9e2146',
-              },
             },
-          }} />
-        </div>
+          }}
+          className="card-element"
+        />
       </div>
 
-      {error && <div className="error" style={{ marginBottom: '15px' }}>{error}</div>}
-
-      <button 
-        type="submit" 
-        className="btn btn-primary" 
-        style={{ width: '100%' }}
+      <Button
+        type="submit"
+        variant="primary"
+        size="lg"
+        fullWidth
         disabled={!stripe || processing}
       >
-        {processing ? 'Processing...' : `Pay $${totalPrice}`}
-      </button>
+        {processing ? 'Processing...' : `Pay $${totalPrice.toFixed(2)}`}
+      </Button>
 
-      <p style={{ marginTop: '15px', fontSize: '14px', color: '#666', textAlign: 'center' }}>
-        Test card: 4242 4242 4242 4242, any future date, any CVC
+      <p className="payment-note">
+        🔒 Your payment is secure and encrypted
       </p>
     </form>
   );
@@ -169,63 +108,184 @@ const BookingForm = ({ schedule }) => {
 
 const Booking = () => {
   const { scheduleId } = useParams();
+  const navigate = useNavigate();
   const [schedule, setSchedule] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [numSeats, setNumSeats] = useState(1);
+  const [showPayment, setShowPayment] = useState(false);
 
   useEffect(() => {
-    loadSchedule();
+    fetchSchedule();
   }, [scheduleId]);
 
-  const loadSchedule = async () => {
+  const fetchSchedule = async () => {
     try {
+      setLoading(true);
       const response = await schedulesAPI.getById(scheduleId);
-      setSchedule(response.data.schedule);
+      setSchedule(response.data.schedule || response.data);
     } catch (err) {
-      setError('Failed to load schedule');
+      setError('Failed to load schedule details');
     } finally {
       setLoading(false);
     }
   };
 
+  const handleContinueToPayment = () => {
+    if (numSeats < 1 || numSeats > schedule.availableSeats) {
+      setError(`Please select between 1 and ${schedule.availableSeats} seats`);
+      return;
+    }
+    setError('');
+    setShowPayment(true);
+  };
+
+  const handlePaymentSuccess = (booking) => {
+    navigate('/my-bookings', {
+      state: { message: 'Booking successful! 🎉' }
+    });
+  };
+
   if (loading) {
-    return <div className="loading">Loading...</div>;
+    return <Loading text="Loading booking details..." />;
   }
 
-  if (error || !schedule) {
+  if (error && !schedule) {
     return (
-      <div className="container" style={{ paddingTop: '40px' }}>
-        <div className="card" style={{ textAlign: 'center' }}>
-          <h3>Schedule not found</h3>
-        </div>
+      <div className="container" style={{ paddingTop: '2rem' }}>
+        <Alert type="error">{error}</Alert>
+        <Button onClick={() => navigate('/search')}>Back to Search</Button>
       </div>
     );
   }
 
+  const totalPrice = schedule ? schedule.price * numSeats : 0;
+
   return (
-    <div className="container" style={{ paddingTop: '40px', maxWidth: '600px' }}>
-      <div className="card">
-        <h2 style={{ marginBottom: '20px' }}>Book Your Trip</h2>
-        
-        <div style={{ marginBottom: '30px', padding: '15px', backgroundColor: '#f8f9fa', borderRadius: '4px' }}>
-          <h4 style={{ marginBottom: '10px' }}>Trip Details</h4>
-          <div style={{ marginBottom: '10px' }}>
-            <strong>Route:</strong> {schedule.route?.origin} → {schedule.route?.destination}
+    <div className="booking-container">
+      <div className="container">
+        <div className="booking-wrapper">
+          <div className="booking-main">
+            <h1>Complete Your Booking 🚀</h1>
+
+            <Card className="schedule-summary-card">
+              <h3>Trip Details</h3>
+              <div className="trip-info">
+                <div className="trip-route">
+                  <h4>{schedule.route?.name}</h4>
+                  <div className="route-line">
+                    <span className="route-location">{schedule.route?.origin}</span>
+                    <span className="route-separator">→</span>
+                    <span className="route-location">{schedule.route?.destination}</span>
+                  </div>
+                </div>
+
+                <div className="trip-details-grid">
+                  <div className="trip-detail">
+                    <span className="detail-label">Departure</span>
+                    <span className="detail-value">
+                      {format(new Date(schedule.departureTime), 'MMM dd, yyyy')}
+                    </span>
+                    <span className="detail-time">
+                      {format(new Date(schedule.departureTime), 'HH:mm')}
+                    </span>
+                  </div>
+
+                  <div className="trip-detail">
+                    <span className="detail-label">Arrival</span>
+                    <span className="detail-value">
+                      {format(new Date(schedule.arrivalTime), 'MMM dd, yyyy')}
+                    </span>
+                    <span className="detail-time">
+                      {format(new Date(schedule.arrivalTime), 'HH:mm')}
+                    </span>
+                  </div>
+
+                  <div className="trip-detail">
+                    <span className="detail-label">Duration</span>
+                    <span className="detail-value">
+                      {schedule.route?.duration
+                        ? `${Math.floor(schedule.route.duration / 60)}h ${schedule.route.duration % 60}m`
+                        : 'N/A'}
+                    </span>
+                  </div>
+
+                  <div className="trip-detail">
+                    <span className="detail-label">Bus Number</span>
+                    <span className="detail-value">{schedule.busNumber}</span>
+                  </div>
+                </div>
+              </div>
+            </Card>
+
+            {!showPayment ? (
+              <Card>
+                <h3>Select Number of Seats</h3>
+                {error && <Alert type="error">{error}</Alert>}
+                <Input
+                  label="Number of Seats"
+                  type="number"
+                  min="1"
+                  max={schedule.availableSeats}
+                  value={numSeats}
+                  onChange={(e) => setNumSeats(parseInt(e.target.value) || 1)}
+                />
+                <p className="available-seats-info">
+                  {schedule.availableSeats} seats available
+                </p>
+                <Button
+                  variant="primary"
+                  size="lg"
+                  fullWidth
+                  onClick={handleContinueToPayment}
+                >
+                  Continue to Payment
+                </Button>
+              </Card>
+            ) : (
+              <Card>
+                <h3>Payment Details</h3>
+                <Elements stripe={stripePromise}>
+                  <CheckoutForm
+                    schedule={schedule}
+                    numSeats={numSeats}
+                    totalPrice={totalPrice}
+                    onSuccess={handlePaymentSuccess}
+                  />
+                </Elements>
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  onClick={() => setShowPayment(false)}
+                  style={{ marginTop: '1rem' }}
+                >
+                  ← Back to Seat Selection
+                </Button>
+              </Card>
+            )}
           </div>
-          <div style={{ marginBottom: '10px' }}>
-            <strong>Departure:</strong> {format(new Date(schedule.departureTime), 'MMM dd, yyyy HH:mm')}
-          </div>
-          <div style={{ marginBottom: '10px' }}>
-            <strong>Arrival:</strong> {format(new Date(schedule.arrivalTime), 'MMM dd, yyyy HH:mm')}
-          </div>
-          <div>
-            <strong>Available Seats:</strong> {schedule.availableSeats}
+
+          <div className="booking-sidebar">
+            <Card className="price-summary-card">
+              <h3>Price Summary</h3>
+              <div className="price-breakdown">
+                <div className="price-item">
+                  <span>Price per seat</span>
+                  <span>${schedule.price.toFixed(2)}</span>
+                </div>
+                <div className="price-item">
+                  <span>Number of seats</span>
+                  <span>×{numSeats}</span>
+                </div>
+                <div className="price-divider"></div>
+                <div className="price-item price-total">
+                  <span>Total</span>
+                  <span>${totalPrice.toFixed(2)}</span>
+                </div>
+              </div>
+            </Card>
           </div>
         </div>
-
-        <Elements stripe={stripePromise}>
-          <BookingForm schedule={schedule} />
-        </Elements>
       </div>
     </div>
   );
