@@ -76,6 +76,19 @@ const Home = () => {
     }
   };
 
+  const createProviderMarkerIcon = (isAvailable) => {
+    const color = isAvailable ? '#10b981' : '#9ca3af';
+    return {
+      url: 'data:image/svg+xml;charset=UTF-8,' + encodeURIComponent(
+        `<svg xmlns="http://www.w3.org/2000/svg" width="30" height="40" viewBox="0 0 30 40">
+          <path d="M15 0C6.7 0 0 6.7 0 15c0 12 15 25 15 25s15-13 15-25c0-8.3-6.7-15-15-15z" fill="${color}"/>
+          <circle cx="15" cy="15" r="8" fill="white"/>
+        </svg>`
+      ),
+      scaledSize: new window.google.maps.Size(30, 40),
+    };
+  };
+
   const fetchProviders = async () => {
     try {
       setLoading(true);
@@ -86,9 +99,9 @@ const Home = () => {
         id: schedule.id,
         name: schedule.route?.name || 'Service Provider',
         serviceType: 'General Help',
-        distance: schedule.route?.distance || Math.random() * 5 + 1,
+        distance: schedule.route?.distance || 2.5,
         availability: schedule.status === 'SCHEDULED',
-        rating: 4.5 + Math.random() * 0.5,
+        rating: 4.5,
         pricePerHour: schedule.price || 25,
         location: {
           lat: schedule.route?.originLat || 40.7128,
@@ -105,15 +118,7 @@ const Home = () => {
           new window.google.maps.Marker({
             position: provider.location,
             map: googleMapRef.current,
-            icon: {
-              url: 'data:image/svg+xml;charset=UTF-8,' + encodeURIComponent(`
-                <svg xmlns="http://www.w3.org/2000/svg" width="30" height="40" viewBox="0 0 30 40">
-                  <path d="M15 0C6.7 0 0 6.7 0 15c0 12 15 25 15 25s15-13 15-25c0-8.3-6.7-15-15-15z" fill="${provider.isAvailable ? '#10b981' : '#9ca3af'}"/>
-                  <circle cx="15" cy="15" r="8" fill="white"/>
-                </svg>
-              `),
-              scaledSize: new window.google.maps.Size(30, 40),
-            },
+            icon: createProviderMarkerIcon(provider.isAvailable),
             title: provider.name,
           });
         });

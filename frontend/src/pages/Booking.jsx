@@ -172,7 +172,7 @@ const Booking = () => {
     name: schedule?.route?.name || `Provider ${schedule?.busNumber || ''}`,
     serviceType: 'General Help',
     distance: schedule?.route?.distance || 2.5,
-    rating: 4.5 + Math.random() * 0.5,
+    rating: 4.5,
     pricePerHour: pricePerHour,
     description: 'Professional service provider available in your area',
   };

@@ -35,9 +35,9 @@ const Search = () => {
         id: schedule.id,
         name: schedule.route?.name || `Provider ${schedule.busNumber || ''}`,
         serviceType: filters.serviceType || 'General Help',
-        distance: schedule.route?.distance || Math.random() * 5 + 1,
+        distance: schedule.route?.distance || 2.5,
         availability: schedule.status === 'SCHEDULED',
-        rating: 4.5 + Math.random() * 0.5,
+        rating: 4.5,
         pricePerHour: schedule.price || 25,
         location: {
           lat: schedule.route?.originLat || 40.7128,
