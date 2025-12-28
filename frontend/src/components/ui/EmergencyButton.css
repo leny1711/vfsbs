@@ -1,0 +1,139 @@
+.emergency-button {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--spacing-sm);
+  width: 100%;
+  max-width: 350px;
+  padding: var(--spacing-xl) var(--spacing-lg);
+  background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+  border: 3px solid rgba(255, 255, 255, 0.3);
+  border-radius: var(--radius-xl);
+  box-shadow: 
+    0 10px 30px rgba(239, 68, 68, 0.4),
+    0 0 0 0 rgba(239, 68, 68, 0.5);
+  color: white;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all var(--transition-base);
+  animation: pulse 2s infinite;
+  overflow: hidden;
+}
+
+.emergency-button::before {
+  content: '';
+  position: absolute;
+  top: -50%;
+  left: -50%;
+  width: 200%;
+  height: 200%;
+  background: linear-gradient(
+    45deg,
+    transparent,
+    rgba(255, 255, 255, 0.1),
+    transparent
+  );
+  transform: rotate(45deg);
+  animation: shine 3s infinite;
+}
+
+.emergency-button:hover:not(.disabled):not(.loading) {
+  transform: translateY(-2px) scale(1.02);
+  box-shadow: 
+    0 15px 40px rgba(239, 68, 68, 0.5),
+    0 0 0 8px rgba(239, 68, 68, 0.2);
+  animation: pulse 1s infinite;
+}
+
+.emergency-button:active:not(.disabled):not(.loading) {
+  transform: translateY(0) scale(0.98);
+}
+
+.emergency-button.loading {
+  cursor: not-allowed;
+  opacity: 0.8;
+}
+
+.emergency-button.disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+  animation: none;
+}
+
+.emergency-icon {
+  font-size: 3rem;
+  animation: bounce 1s infinite;
+}
+
+.emergency-text {
+  font-size: 1.5rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+.emergency-subtext {
+  font-size: 0.875rem;
+  font-weight: 500;
+  opacity: 0.95;
+  text-transform: none;
+  letter-spacing: normal;
+}
+
+@keyframes pulse {
+  0%, 100% {
+    box-shadow: 
+      0 10px 30px rgba(239, 68, 68, 0.4),
+      0 0 0 0 rgba(239, 68, 68, 0.5);
+  }
+  50% {
+    box-shadow: 
+      0 10px 30px rgba(239, 68, 68, 0.4),
+      0 0 0 12px rgba(239, 68, 68, 0);
+  }
+}
+
+@keyframes bounce {
+  0%, 100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-5px);
+  }
+}
+
+@keyframes shine {
+  0% {
+    left: -50%;
+  }
+  100% {
+    left: 150%;
+  }
+}
+
+.emergency-button.loading .emergency-icon {
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (max-width: 768px) {
+  .emergency-button {
+    max-width: 100%;
+    padding: var(--spacing-lg) var(--spacing-md);
+  }
+
+  .emergency-icon {
+    font-size: 2.5rem;
+  }
+
+  .emergency-text {
+    font-size: 1.25rem;
+  }
+}
