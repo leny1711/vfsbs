@@ -59,7 +59,7 @@ const Register = () => {
         <Card className="auth-card">
           <div className="auth-header">
             <h1>Get Started! ✨</h1>
-            <p>Create your account and start booking</p>
+            <p>Create your account to access service providers</p>
           </div>
 
           {error && <Alert type="error">{error}</Alert>}
