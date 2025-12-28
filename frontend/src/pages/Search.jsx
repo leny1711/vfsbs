@@ -1,46 +1,67 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { schedulesAPI } from '../services/api';
-import { Button, Card, Input, Loading, Alert } from '../components/ui';
-import { format } from 'date-fns';
+import { providersAPI } from '../services/api';
+import { Button, Card, Input, Loading, Alert, ProviderCard, Select } from '../components/ui';
 import './Search.css';
 
 const Search = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const [schedules, setSchedules] = useState([]);
+  const [providers, setProviders] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [filters, setFilters] = useState({
-    origin: searchParams.get('origin') || '',
-    destination: searchParams.get('destination') || '',
-    date: ''
+    serviceType: searchParams.get('serviceType') || '',
+    location: searchParams.get('location') || '',
+    availability: searchParams.get('availability') || 'all'
   });
 
   useEffect(() => {
-    fetchSchedules();
+    fetchProviders();
   }, []);
 
-  const fetchSchedules = async () => {
+  const fetchProviders = async () => {
     try {
       setLoading(true);
       setError('');
       const params = {};
-      if (filters.origin) params.origin = filters.origin;
-      if (filters.destination) params.destination = filters.destination;
-      if (filters.date) params.date = filters.date;
+      if (filters.location) params.origin = filters.location;
 
-      const response = await schedulesAPI.search(params);
-      setSchedules(response.data.schedules || response.data || []);
+      const response = await providersAPI.search(params);
+      const providerData = response.data.schedules || response.data || [];
+      
+      // Transform schedule data to provider format
+      let transformedProviders = providerData.map((schedule) => ({
+        id: schedule.id,
+        name: schedule.route?.name || `Provider ${schedule.busNumber || ''}`,
+        serviceType: filters.serviceType || 'General Help',
+        distance: schedule.route?.distance || Math.random() * 5 + 1,
+        availability: schedule.status === 'SCHEDULED',
+        rating: 4.5 + Math.random() * 0.5,
+        pricePerHour: schedule.price || 25,
+        location: {
+          lat: schedule.route?.originLat || 40.7128,
+          lng: schedule.route?.originLng || -74.0060,
+        },
+        description: `Professional ${filters.serviceType || 'service'} provider available in your area`,
+        isAvailable: schedule.availableSeats > 0,
+      }));
+
+      // Apply availability filter
+      if (filters.availability === 'available') {
+        transformedProviders = transformedProviders.filter(p => p.isAvailable);
+      }
+
+      setProviders(transformedProviders);
     } catch (err) {
-      setError('Failed to load schedules. Please try again.');
+      setError('Failed to load service providers. Please try again.');
     } finally {
       setLoading(false);
     }
   };
 
   const handleSearch = () => {
-    fetchSchedules();
+    fetchProviders();
   };
 
   const handleFilterChange = (field, value) => {
@@ -50,35 +71,42 @@ const Search = () => {
     });
   };
 
+  const handleBookProvider = (provider) => {
+    navigate(`/booking/${provider.id}`);
+  };
+
   return (
     <div className="search-container">
       <div className="container">
         <div className="search-header">
-          <h1>Search Bus Schedules 🔍</h1>
-          <p>Find the perfect route for your journey</p>
+          <h1>Find Service Providers 🔍</h1>
+          <p>Browse and connect with professionals near you</p>
         </div>
 
         <Card className="search-filters-card">
           <div className="search-filters">
             <Input
-              label="From"
-              placeholder="Enter origin city"
-              value={filters.origin}
-              onChange={(e) => handleFilterChange('origin', e.target.value)}
+              label="Location"
+              placeholder="Enter your location"
+              value={filters.location}
+              onChange={(e) => handleFilterChange('location', e.target.value)}
               fullWidth={false}
             />
             <Input
-              label="To"
-              placeholder="Enter destination city"
-              value={filters.destination}
-              onChange={(e) => handleFilterChange('destination', e.target.value)}
+              label="Service Type"
+              placeholder="e.g., Plumbing, Cleaning"
+              value={filters.serviceType}
+              onChange={(e) => handleFilterChange('serviceType', e.target.value)}
               fullWidth={false}
             />
-            <Input
-              label="Date"
-              type="date"
-              value={filters.date}
-              onChange={(e) => handleFilterChange('date', e.target.value)}
+            <Select
+              label="Availability"
+              value={filters.availability}
+              onChange={(e) => handleFilterChange('availability', e.target.value)}
+              options={[
+                { value: 'all', label: 'All Providers' },
+                { value: 'available', label: 'Available Only' }
+              ]}
               fullWidth={false}
             />
             <div className="search-button-container">
@@ -97,90 +125,28 @@ const Search = () => {
         {error && <Alert type="error">{error}</Alert>}
 
         {loading ? (
-          <Loading text="Searching for schedules..." />
-        ) : schedules.length === 0 ? (
+          <Loading text="Searching for service providers..." />
+        ) : providers.length === 0 ? (
           <Card className="no-results-card">
             <div className="no-results">
-              <h3>No schedules found</h3>
-              <p>Try adjusting your search criteria</p>
+              <h3>No providers found</h3>
+              <p>Try adjusting your search criteria or check back later</p>
             </div>
           </Card>
         ) : (
           <div className="search-results">
             <div className="results-header">
-              <h2>Available Schedules</h2>
-              <span className="results-count">{schedules.length} routes found</span>
+              <h2>Available Service Providers</h2>
+              <span className="results-count">{providers.length} providers found</span>
             </div>
 
-            <div className="schedules-list">
-              {schedules.map((schedule) => (
-                <Card key={schedule.id} className="schedule-item" hover>
-                  <div className="schedule-main">
-                    <div className="schedule-route-info">
-                      <h3>{schedule.route?.name || 'Route'}</h3>
-                      <div className="route-cities">
-                        <span className="city">{schedule.route?.origin}</span>
-                        <span className="arrow">→</span>
-                        <span className="city">{schedule.route?.destination}</span>
-                      </div>
-                    </div>
-
-                    <div className="schedule-details-grid">
-                      <div className="detail-item">
-                        <span className="detail-label">Departure</span>
-                        <span className="detail-value">
-                          {format(new Date(schedule.departureTime), 'MMM dd, yyyy')}
-                        </span>
-                        <span className="detail-time">
-                          {format(new Date(schedule.departureTime), 'HH:mm')}
-                        </span>
-                      </div>
-
-                      <div className="detail-item">
-                        <span className="detail-label">Arrival</span>
-                        <span className="detail-value">
-                          {format(new Date(schedule.arrivalTime), 'MMM dd, yyyy')}
-                        </span>
-                        <span className="detail-time">
-                          {format(new Date(schedule.arrivalTime), 'HH:mm')}
-                        </span>
-                      </div>
-
-                      <div className="detail-item">
-                        <span className="detail-label">Duration</span>
-                        <span className="detail-value">
-                          {schedule.route?.duration
-                            ? `${Math.floor(schedule.route.duration / 60)}h ${schedule.route.duration % 60}m`
-                            : 'N/A'}
-                        </span>
-                      </div>
-
-                      <div className="detail-item">
-                        <span className="detail-label">Available Seats</span>
-                        <span className="detail-value seats-count">
-                          {schedule.availableSeats} / {schedule.totalSeats}
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="schedule-actions">
-                    <div className="price-display">
-                      <span className="price-label">Price</span>
-                      <span className="price-value">
-                        ${schedule.price?.toFixed(2) || '0.00'}
-                      </span>
-                    </div>
-                    <Button
-                      variant="primary"
-                      size="md"
-                      onClick={() => navigate(`/booking/${schedule.id}`)}
-                      disabled={schedule.availableSeats === 0}
-                    >
-                      {schedule.availableSeats === 0 ? 'Sold Out' : 'Book Now'}
-                    </Button>
-                  </div>
-                </Card>
+            <div className="providers-list">
+              {providers.map((provider) => (
+                <ProviderCard
+                  key={provider.id}
+                  provider={provider}
+                  onBook={handleBookProvider}
+                />
               ))}
             </div>
           </div>

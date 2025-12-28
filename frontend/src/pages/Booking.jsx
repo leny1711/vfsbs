@@ -109,10 +109,13 @@ const CheckoutForm = ({ schedule, numSeats, totalPrice, onSuccess }) => {
 const Booking = () => {
   const { scheduleId } = useParams();
   const navigate = useNavigate();
+  const searchParams = new URLSearchParams(window.location.search);
+  const isEmergency = searchParams.get('emergency') === 'true';
   const [schedule, setSchedule] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [numSeats, setNumSeats] = useState(1);
+  const [serviceHours, setServiceHours] = useState(1);
   const [showPayment, setShowPayment] = useState(false);
 
   useEffect(() => {
@@ -123,17 +126,18 @@ const Booking = () => {
     try {
       setLoading(true);
       const response = await schedulesAPI.getById(scheduleId);
-      setSchedule(response.data.schedule || response.data);
+      const scheduleData = response.data.schedule || response.data;
+      setSchedule(scheduleData);
     } catch (err) {
-      setError('Failed to load schedule details');
+      setError('Failed to load provider details');
     } finally {
       setLoading(false);
     }
   };
 
   const handleContinueToPayment = () => {
-    if (numSeats < 1 || numSeats > schedule.availableSeats) {
-      setError(`Please select between 1 and ${schedule.availableSeats} seats`);
+    if (serviceHours < 1) {
+      setError('Please select at least 1 hour of service');
       return;
     }
     setError('');
@@ -142,12 +146,12 @@ const Booking = () => {
 
   const handlePaymentSuccess = (booking) => {
     navigate('/my-bookings', {
-      state: { message: 'Booking successful! 🎉' }
+      state: { message: isEmergency ? 'Emergency booking successful! Help is on the way! 🚨' : 'Booking successful! 🎉' }
     });
   };
 
   if (loading) {
-    return <Loading text="Loading booking details..." />;
+    return <Loading text="Loading provider details..." />;
   }
 
   if (error && !schedule) {
@@ -159,79 +163,68 @@ const Booking = () => {
     );
   }
 
-  const totalPrice = schedule ? schedule.price * numSeats : 0;
+  const pricePerHour = schedule?.price || 25;
+  const totalPrice = pricePerHour * serviceHours;
+
+  // Transform schedule data to provider format
+  const provider = {
+    id: schedule?.id,
+    name: schedule?.route?.name || `Provider ${schedule?.busNumber || ''}`,
+    serviceType: 'General Help',
+    distance: schedule?.route?.distance || 2.5,
+    rating: 4.5 + Math.random() * 0.5,
+    pricePerHour: pricePerHour,
+    description: 'Professional service provider available in your area',
+  };
 
   return (
     <div className="booking-container">
       <div className="container">
+        {isEmergency && (
+          <Alert type="info">
+            🚨 <strong>Emergency Mode:</strong> You're booking the nearest available provider for immediate assistance.
+          </Alert>
+        )}
+        
         <div className="booking-wrapper">
           <div className="booking-main">
-            <h1>Complete Your Booking 🚀</h1>
+            <h1>{isEmergency ? 'Emergency Booking 🚨' : 'Complete Your Booking 🙂'}</h1>
 
             <Card className="schedule-summary-card">
-              <h3>Trip Details</h3>
+              <h3>Provider Details</h3>
               <div className="trip-info">
-                <div className="trip-route">
-                  <h4>{schedule.route?.name}</h4>
-                  <div className="route-line">
-                    <span className="route-location">{schedule.route?.origin}</span>
-                    <span className="route-separator">→</span>
-                    <span className="route-location">{schedule.route?.destination}</span>
+                <div className="provider-header-booking">
+                  <div className="provider-avatar-large">
+                    {provider.name.charAt(0).toUpperCase()}
+                  </div>
+                  <div>
+                    <h4>{provider.name}</h4>
+                    <p className="provider-service-type">{provider.serviceType}</p>
+                    <div className="provider-stats-inline">
+                      <span>⭐ {provider.rating.toFixed(1)}</span>
+                      <span>📍 {provider.distance.toFixed(1)} km away</span>
+                    </div>
                   </div>
                 </div>
 
-                <div className="trip-details-grid">
-                  <div className="trip-detail">
-                    <span className="detail-label">Departure</span>
-                    <span className="detail-value">
-                      {format(new Date(schedule.departureTime), 'MMM dd, yyyy')}
-                    </span>
-                    <span className="detail-time">
-                      {format(new Date(schedule.departureTime), 'HH:mm')}
-                    </span>
-                  </div>
-
-                  <div className="trip-detail">
-                    <span className="detail-label">Arrival</span>
-                    <span className="detail-value">
-                      {format(new Date(schedule.arrivalTime), 'MMM dd, yyyy')}
-                    </span>
-                    <span className="detail-time">
-                      {format(new Date(schedule.arrivalTime), 'HH:mm')}
-                    </span>
-                  </div>
-
-                  <div className="trip-detail">
-                    <span className="detail-label">Duration</span>
-                    <span className="detail-value">
-                      {schedule.route?.duration
-                        ? `${Math.floor(schedule.route.duration / 60)}h ${schedule.route.duration % 60}m`
-                        : 'N/A'}
-                    </span>
-                  </div>
-
-                  <div className="trip-detail">
-                    <span className="detail-label">Bus Number</span>
-                    <span className="detail-value">{schedule.busNumber}</span>
-                  </div>
-                </div>
+                <p className="provider-description-booking">{provider.description}</p>
               </div>
             </Card>
 
             {!showPayment ? (
               <Card>
-                <h3>Select Number of Seats</h3>
+                <h3>Service Duration</h3>
                 {error && <Alert type="error">{error}</Alert>}
                 <Input
-                  label="Number of Seats"
+                  label="Hours of Service"
                   type="number"
                   min="1"
-                  max={schedule.availableSeats}
-                  value={numSeats}
-                  onChange={(e) => setNumSeats(parseInt(e.target.value) || 1)}
+                  max="12"
+                  value={serviceHours}
+                  onChange={(e) => setServiceHours(parseInt(e.target.value) || 1)}
                 />
-                <p className="available-seats-info">
-                  {schedule.availableSeats} seats available
+                <p className="service-hours-info">
+                  Select the estimated duration of service needed (1-12 hours)
                 </p>
                 <Button
                   variant="primary"
@@ -248,7 +241,7 @@ const Booking = () => {
                 <Elements stripe={stripePromise}>
                   <CheckoutForm
                     schedule={schedule}
-                    numSeats={numSeats}
+                    numSeats={serviceHours}
                     totalPrice={totalPrice}
                     onSuccess={handlePaymentSuccess}
                   />
@@ -259,7 +252,7 @@ const Booking = () => {
                   onClick={() => setShowPayment(false)}
                   style={{ marginTop: '1rem' }}
                 >
-                  ← Back to Seat Selection
+                  ← Back to Duration Selection
                 </Button>
               </Card>
             )}
@@ -270,12 +263,12 @@ const Booking = () => {
               <h3>Price Summary</h3>
               <div className="price-breakdown">
                 <div className="price-item">
-                  <span>Price per seat</span>
-                  <span>${schedule.price.toFixed(2)}</span>
+                  <span>Price per hour</span>
+                  <span>${pricePerHour.toFixed(2)}</span>
                 </div>
                 <div className="price-item">
-                  <span>Number of seats</span>
-                  <span>×{numSeats}</span>
+                  <span>Service duration</span>
+                  <span>×{serviceHours}h</span>
                 </div>
                 <div className="price-divider"></div>
                 <div className="price-item price-total">
@@ -283,6 +276,11 @@ const Booking = () => {
                   <span>${totalPrice.toFixed(2)}</span>
                 </div>
               </div>
+              {isEmergency && (
+                <div className="emergency-note">
+                  <p>🚨 Priority service - provider will be dispatched immediately</p>
+                </div>
+              )}
             </Card>
           </div>
         </div>

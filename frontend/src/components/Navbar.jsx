@@ -28,7 +28,7 @@ const Navbar = () => {
       <div className="container">
         <div className="navbar-content">
           <Link to="/" className="navbar-logo" onClick={closeMobileMenu}>
-            🚌 VFS Bus
+            ✨ ServiceHub
           </Link>
 
           <button className="mobile-menu-toggle" onClick={toggleMobileMenu}>
@@ -41,13 +41,13 @@ const Navbar = () => {
                 Home
               </Link>
               <Link to="/search" className="nav-link" onClick={closeMobileMenu}>
-                Search
+                Find Providers
               </Link>
               
               {user ? (
                 <>
                   <Link to="/my-bookings" className="nav-link" onClick={closeMobileMenu}>
-                    My Bookings
+                    My Services
                   </Link>
                   <Link to="/profile" className="nav-link" onClick={closeMobileMenu}>
                     Profile
@@ -55,10 +55,10 @@ const Navbar = () => {
                   {isAdmin && (
                     <>
                       <Link to="/admin/routes" className="nav-link admin-link" onClick={closeMobileMenu}>
-                        Routes
+                        Providers
                       </Link>
                       <Link to="/admin/schedules" className="nav-link admin-link" onClick={closeMobileMenu}>
-                        Schedules
+                        Services
                       </Link>
                     </>
                   )}
