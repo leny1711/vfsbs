@@ -1,6 +1,6 @@
-# VFS Bus System - Frontend
+# ServiceHub - Human Service Marketplace
 
-Production-ready React web application for bus ticket booking system.
+Modern React web application for connecting people who need help with nearby service providers. An Uber-like platform for human services.
 
 ## Tech Stack
 
@@ -8,7 +8,7 @@ Production-ready React web application for bus ticket booking system.
 - **Vite** - Build tool and dev server
 - **React Router 6** - Client-side routing
 - **Stripe** - Payment processing
-- **Google Maps JavaScript API** - Map visualization
+- **Google Maps JavaScript API** - Provider location visualization
 - **Axios** - HTTP client
 - **date-fns** - Date formatting
 
@@ -50,20 +50,27 @@ Application runs at `http://localhost:3000`
 
 ## Features
 
+### Core Features
+- **Home Page** - "Find help near me" with Google Maps showing nearby providers
+- **Emergency Button** 🚨 - One-click booking of nearest available provider
+- **Provider Search** - Browse and filter service providers by location and type
+- **Service Booking** - Book providers with flexible duration and Stripe payment
+- **Real-time Availability** - See which providers are available now
+
 ### Public Access
-- **Home Page** - Welcome page with quick navigation
-- **Search Schedules** - Search bus schedules by origin, destination, and date
+- **Browse Providers** - View available service providers on map
+- **Emergency Mode** - Quick access to immediate help
 - **Login/Register** - User authentication
 
-### Authenticated Users
-- **Book Tickets** - Select seats and book tickets with Stripe payment
-- **My Bookings** - View and manage bookings
+### Authenticated Clients
+- **Book Services** - Select provider and service duration with Stripe payment
+- **My Bookings** - View and manage service bookings
 - **Profile** - Update profile information
 - **Cancel Bookings** - Cancel confirmed bookings
 
 ### Admin Users
-- **Manage Routes** - Create, edit, delete bus routes with map visualization
-- **Manage Schedules** - Create, edit, cancel schedules
+- **Manage Providers** - Create, edit, and manage service providers
+- **Manage Services** - Handle service availability and scheduling
 
 ## Project Structure
 
@@ -71,32 +78,69 @@ Application runs at `http://localhost:3000`
 frontend/
 ├── src/
 │   ├── components/
-│   │   ├── Navbar.jsx           # Navigation bar
-│   │   └── PrivateRoute.jsx     # Route protection
+│   │   ├── ui/
+│   │   │   ├── EmergencyButton.jsx   # Emergency mode button
+│   │   │   ├── ProviderCard.jsx      # Provider display card
+│   │   │   ├── Button.jsx            # Reusable button
+│   │   │   ├── Card.jsx              # Card component
+│   │   │   ├── Input.jsx             # Form input
+│   │   │   ├── Select.jsx            # Select dropdown
+│   │   │   ├── Alert.jsx             # Alert messages
+│   │   │   └── Loading.jsx           # Loading spinner
+│   │   ├── Navbar.jsx                # Navigation bar
+│   │   └── PrivateRoute.jsx          # Route protection
 │   ├── contexts/
-│   │   └── AuthContext.jsx      # Authentication context
+│   │   └── AuthContext.jsx           # Authentication context
 │   ├── pages/
-│   │   ├── Home.jsx             # Home page
-│   │   ├── Login.jsx            # Login page
-│   │   ├── Register.jsx         # Registration page
-│   │   ├── Search.jsx           # Schedule search
-│   │   ├── Booking.jsx          # Booking with Stripe
-│   │   ├── MyBookings.jsx       # User bookings
-│   │   ├── Profile.jsx          # User profile
+│   │   ├── Home.jsx                  # Home with map & emergency button
+│   │   ├── Login.jsx                 # Login page
+│   │   ├── Register.jsx              # Registration page
+│   │   ├── Search.jsx                # Provider search & filtering
+│   │   ├── Booking.jsx               # Service booking with Stripe
+│   │   ├── MyBookings.jsx            # User service bookings
+│   │   ├── Profile.jsx               # User profile
 │   │   └── admin/
-│   │       ├── AdminRoutes.jsx  # Route management
-│   │       └── AdminSchedules.jsx # Schedule management
+│   │       ├── AdminRoutes.jsx       # Provider management
+│   │       └── AdminSchedules.jsx    # Service management
 │   ├── services/
-│   │   └── api.js               # API service layer
-│   ├── App.jsx                  # Main app with routing
-│   ├── main.jsx                 # Entry point
-│   └── index.css                # Global styles
-├── index.html                   # HTML template
-├── vite.config.js              # Vite configuration
-├── package.json                # Dependencies
-├── .env.example                # Environment template
-└── .gitignore                  # Git ignore rules
+│   │   └── api.js                    # API service layer
+│   ├── App.jsx                       # Main app with routing
+│   ├── main.jsx                      # Entry point
+│   └── index.css                     # Global styles
+├── index.html                        # HTML template
+├── vite.config.js                    # Vite configuration
+├── package.json                      # Dependencies
+├── .env.example                      # Environment template
+└── .gitignore                        # Git ignore rules
 ```
+
+## Design System
+
+### Color Palette
+- **Primary**: Yellow/Amber (#f59e0b)
+- **Secondary**: White, Light Gray
+- **Text**: Soft Black (#171717)
+- **Emergency**: Red (#ef4444)
+- **Success**: Green (#10b981)
+
+### Design Features
+- ✅ Rounded corners everywhere
+- ✅ Soft shadows for depth
+- ✅ Clean spacing and layout
+- ✅ Smooth hover/transition effects
+- ✅ Mobile-first responsive design
+- ✅ Modern startup/SaaS aesthetic
+
+## Emergency Mode
+
+The emergency feature is the core of the platform:
+
+1. **Large visible button** on home page
+2. **One-click action** - no manual provider selection
+3. **Automatic matching** - finds closest available provider
+4. **Visual feedback** - Shows searching/found states
+5. **Priority routing** - Quick navigation to booking
+6. **Clear indication** - Emergency bookings marked in UI
 
 ## API Integration
 
@@ -111,11 +155,11 @@ The frontend communicates with the backend API at `http://localhost:5000` (confi
 - `POST /api/auth/login` - User login
 - `POST /api/auth/register` - User registration
 - `GET /api/auth/me` - Get current user
-- `GET /api/schedules/search` - Search schedules
-- `POST /api/bookings` - Create booking
+- `GET /api/schedules` - Get service providers (mapped from schedules)
+- `GET /api/schedules/search` - Search providers
+- `POST /api/bookings` - Create service booking
 - `POST /api/payments/create-intent` - Create payment intent
 - `POST /api/payments/confirm` - Confirm payment
-- And more...
 
 ## Stripe Payment Integration
 
@@ -131,7 +175,7 @@ Use Stripe test cards:
 - Use any future expiry date and any CVC
 
 ### Payment Flow
-1. User selects schedule and seats
+1. User selects provider and service duration
 2. Frontend creates booking (status: PENDING)
 3. Backend creates Stripe PaymentIntent
 4. User enters card details
@@ -146,29 +190,32 @@ Use Stripe test cards:
 3. Update key in `index.html` and `.env`
 
 ### Features
-- Route visualization on admin route management
-- Origin and destination markers
-- Auto-fit bounds to show full route
+- **Provider locations** on interactive map
+- **User location** marker
+- **Distance calculation** to providers
+- **Auto-fit bounds** to show all providers
+- **Real-time updates** when providers change
 
 ## User Roles
 
-### Customer (CUSTOMER)
-- Search and book tickets
+### Client (CUSTOMER)
+- Search and book service providers
 - View bookings
 - Cancel bookings
 - Update profile
+- Emergency booking access
 
 ### Admin (ADMIN)
-- All customer features
-- Manage routes
-- Manage schedules
+- All client features
+- Manage service providers
+- Manage service availability
 - View all bookings
 
 ## Test Accounts
 
 From backend seed data:
 - **Admin**: admin@vfsbs.com / admin123
-- **Customer**: customer@vfsbs.com / customer123
+- **Client**: customer@vfsbs.com / customer123
 
 ## Development
 
@@ -182,9 +229,10 @@ npm run preview  # Preview production build
 
 ### Code Style
 - React functional components with hooks
-- Inline styles for simplicity
-- Responsive design with CSS Grid
+- Reusable UI component library
+- Responsive design with CSS Grid/Flexbox
 - Error handling on all API calls
+- Mobile-first approach
 
 ## Production Deployment
 
@@ -225,6 +273,7 @@ Can be hosted on:
 - Stripe requires valid keys for payment processing
 - All API calls include JWT token when authenticated
 - Responsive design works on mobile and desktop
+- Backend compatibility maintained (uses existing schedule/route endpoints)
 
 ## License
 
