@@ -1,41 +1,159 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
-import { schedulesAPI } from '../services/api';
-import { Button, Card, Input, Loading, Alert } from '../components/ui';
-import { format } from 'date-fns';
+import { providersAPI } from '../services/api';
+import { Button, Card, Loading, Alert, EmergencyButton, ProviderCard } from '../components/ui';
 import './Home.css';
 
 const Home = () => {
   const navigate = useNavigate();
   const { user, isAdmin } = useAuth();
-  const [schedules, setSchedules] = useState([]);
+  const [providers, setProviders] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const [searchOrigin, setSearchOrigin] = useState('');
-  const [searchDestination, setSearchDestination] = useState('');
+  const [emergencyLoading, setEmergencyLoading] = useState(false);
+  const [userLocation, setUserLocation] = useState(null);
+  const mapRef = useRef(null);
+  const googleMapRef = useRef(null);
 
   useEffect(() => {
-    fetchSchedules();
+    fetchProviders();
+    initMap();
   }, []);
 
-  const fetchSchedules = async () => {
+  const initMap = () => {
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          const location = {
+            lat: position.coords.latitude,
+            lng: position.coords.longitude,
+          };
+          setUserLocation(location);
+          loadGoogleMap(location);
+        },
+        (error) => {
+          console.error('Error getting location:', error);
+          // Default to a central location
+          const defaultLocation = { lat: 40.7128, lng: -74.0060 }; // New York
+          setUserLocation(defaultLocation);
+          loadGoogleMap(defaultLocation);
+        }
+      );
+    }
+  };
+
+  const loadGoogleMap = (center) => {
+    if (window.google && mapRef.current && !googleMapRef.current) {
+      const map = new window.google.maps.Map(mapRef.current, {
+        center,
+        zoom: 13,
+        styles: [
+          {
+            featureType: 'poi',
+            elementType: 'labels',
+            stylers: [{ visibility: 'off' }],
+          },
+        ],
+      });
+
+      // Add user location marker
+      new window.google.maps.Marker({
+        position: center,
+        map,
+        icon: {
+          path: window.google.maps.SymbolPath.CIRCLE,
+          scale: 10,
+          fillColor: '#f59e0b',
+          fillOpacity: 1,
+          strokeColor: '#ffffff',
+          strokeWeight: 3,
+        },
+        title: 'Your Location',
+      });
+
+      googleMapRef.current = map;
+    }
+  };
+
+  const createProviderMarkerIcon = (isAvailable) => {
+    const color = isAvailable ? '#10b981' : '#9ca3af';
+    return {
+      url: 'data:image/svg+xml;charset=UTF-8,' + encodeURIComponent(
+        `<svg xmlns="http://www.w3.org/2000/svg" width="30" height="40" viewBox="0 0 30 40">
+          <path d="M15 0C6.7 0 0 6.7 0 15c0 12 15 25 15 25s15-13 15-25c0-8.3-6.7-15-15-15z" fill="${color}"/>
+          <circle cx="15" cy="15" r="8" fill="white"/>
+        </svg>`
+      ),
+      scaledSize: new window.google.maps.Size(30, 40),
+    };
+  };
+
+  const fetchProviders = async () => {
     try {
       setLoading(true);
-      const response = await schedulesAPI.getAll({ limit: 6 });
-      setSchedules(response.data.schedules || response.data);
+      const response = await providersAPI.getAll({ limit: 6 });
+      const providerData = response.data.schedules || response.data;
+      // Transform schedule data to provider format
+      const transformedProviders = providerData.map((schedule) => ({
+        id: schedule.id,
+        name: schedule.route?.name || 'Service Provider',
+        serviceType: 'General Help',
+        distance: schedule.route?.distance || 2.5,
+        availability: schedule.status === 'SCHEDULED',
+        rating: 4.5,
+        pricePerHour: schedule.price || 25,
+        location: {
+          lat: schedule.route?.originLat || 40.7128,
+          lng: schedule.route?.originLng || -74.0060,
+        },
+        description: `Professional service provider available in your area`,
+        isAvailable: schedule.availableSeats > 0,
+      }));
+      setProviders(transformedProviders);
+
+      // Add provider markers to map
+      if (googleMapRef.current) {
+        transformedProviders.forEach((provider) => {
+          new window.google.maps.Marker({
+            position: provider.location,
+            map: googleMapRef.current,
+            icon: createProviderMarkerIcon(provider.isAvailable),
+            title: provider.name,
+          });
+        });
+      }
     } catch (err) {
-      setError('Failed to load schedules');
+      setError('Failed to load service providers');
+      console.error(err);
     } finally {
       setLoading(false);
     }
   };
 
-  const handleSearch = () => {
-    const params = new URLSearchParams();
-    if (searchOrigin) params.set('origin', searchOrigin);
-    if (searchDestination) params.set('destination', searchDestination);
-    navigate(`/search?${params.toString()}`);
+  const handleEmergency = async () => {
+    setEmergencyLoading(true);
+    try {
+      // Find closest available provider
+      await new Promise((resolve) => setTimeout(resolve, 1500)); // Simulate search
+      
+      const availableProviders = providers.filter((p) => p.isAvailable);
+      if (availableProviders.length > 0) {
+        // Sort by distance and get closest
+        const closest = availableProviders.sort((a, b) => a.distance - b.distance)[0];
+        navigate(`/booking/${closest.id}?emergency=true`);
+      } else {
+        setError('No providers available at the moment. Please try again.');
+      }
+    } catch (err) {
+      setError('Failed to process emergency request');
+    } finally {
+      setEmergencyLoading(false);
+    }
+  };
+
+  const handleBookProvider = (provider) => {
+    navigate(`/booking/${provider.id}`);
   };
 
   return (
@@ -44,98 +162,54 @@ const Home = () => {
         <div className="container">
           <div className="hero-content">
             <h1 className="hero-title">
-              Book Your Bus Ticket 🚀
+              Find Help Near You 🙂
             </h1>
             <p className="hero-subtitle">
-              Fast, reliable, and affordable bus travel across the country
+              Connect with trusted service providers in your area, instantly
             </p>
 
-            <Card className="search-card">
-              <div className="search-form">
-                <Input
-                  placeholder="From (e.g., New York)"
-                  value={searchOrigin}
-                  onChange={(e) => setSearchOrigin(e.target.value)}
-                  fullWidth={false}
-                  className="search-input"
-                />
-                <Input
-                  placeholder="To (e.g., Boston)"
-                  value={searchDestination}
-                  onChange={(e) => setSearchDestination(e.target.value)}
-                  fullWidth={false}
-                  className="search-input"
-                />
-                <Button
-                  variant="primary"
-                  size="lg"
-                  onClick={handleSearch}
-                  className="search-button"
-                >
-                  Search
-                </Button>
-              </div>
-            </Card>
+            <div className="emergency-container">
+              <EmergencyButton
+                onClick={handleEmergency}
+                loading={emergencyLoading}
+                disabled={providers.filter((p) => p.isAvailable).length === 0}
+              />
+              <p className="emergency-hint">
+                Instantly connects you with the nearest available provider
+              </p>
+            </div>
           </div>
         </div>
       </section>
 
-      <section className="schedules-section">
+      <section className="map-section">
+        <div className="container">
+          <Card className="map-card">
+            <h2 className="map-title">Service Providers Near You</h2>
+            <div ref={mapRef} className="map-container" />
+          </Card>
+        </div>
+      </section>
+
+      <section className="providers-section">
         <div className="container">
           <div className="section-header">
-            <h2>Popular Routes ✨</h2>
-            <p>Check out our most popular bus routes</p>
+            <h2>Available Service Providers ✨</h2>
+            <p>Browse and book trusted professionals in your area</p>
           </div>
 
           {error && <Alert type="error">{error}</Alert>}
 
           {loading ? (
-            <Loading text="Loading schedules..." />
+            <Loading text="Loading service providers..." />
           ) : (
-            <div className="schedules-grid">
-              {schedules.slice(0, 6).map((schedule) => (
-                <Card key={schedule.id} className="schedule-card" hover>
-                  <div className="schedule-route">
-                    <h3>{schedule.route?.name || 'Route'}</h3>
-                    <div className="route-details">
-                      <span className="route-point">{schedule.route?.origin}</span>
-                      <span className="route-arrow">→</span>
-                      <span className="route-point">{schedule.route?.destination}</span>
-                    </div>
-                  </div>
-
-                  <div className="schedule-info">
-                    <div className="info-item">
-                      <span className="info-label">Departure:</span>
-                      <span className="info-value">
-                        {format(new Date(schedule.departureTime), 'MMM dd, HH:mm')}
-                      </span>
-                    </div>
-                    <div className="info-item">
-                      <span className="info-label">Duration:</span>
-                      <span className="info-value">
-                        {schedule.route?.duration ? `${Math.floor(schedule.route.duration / 60)}h ${schedule.route.duration % 60}m` : 'N/A'}
-                      </span>
-                    </div>
-                    <div className="info-item">
-                      <span className="info-label">Available Seats:</span>
-                      <span className="info-value">{schedule.availableSeats}</span>
-                    </div>
-                  </div>
-
-                  <div className="schedule-footer">
-                    <div className="price">
-                      ${schedule.price?.toFixed(2) || '0.00'}
-                    </div>
-                    <Button
-                      variant="primary"
-                      size="sm"
-                      onClick={() => navigate(`/booking/${schedule.id}`)}
-                    >
-                      Book Now
-                    </Button>
-                  </div>
-                </Card>
+            <div className="providers-grid">
+              {providers.map((provider) => (
+                <ProviderCard
+                  key={provider.id}
+                  provider={provider}
+                  onBook={handleBookProvider}
+                />
               ))}
             </div>
           )}
@@ -146,7 +220,7 @@ const Home = () => {
               size="lg"
               onClick={() => navigate('/search')}
             >
-              View All Routes
+              View All Providers
             </Button>
           </div>
         </div>
@@ -158,7 +232,7 @@ const Home = () => {
             <div className="quick-actions-grid">
               <Card className="action-card" hover>
                 <h3>My Bookings</h3>
-                <p>View and manage your bookings</p>
+                <p>View and manage your service bookings</p>
                 <Button
                   variant="secondary"
                   onClick={() => navigate('/my-bookings')}
@@ -181,7 +255,7 @@ const Home = () => {
               {isAdmin && (
                 <Card className="action-card" hover>
                   <h3>Admin Panel</h3>
-                  <p>Manage routes and schedules</p>
+                  <p>Manage service providers</p>
                   <Button
                     variant="secondary"
                     onClick={() => navigate('/admin/routes')}

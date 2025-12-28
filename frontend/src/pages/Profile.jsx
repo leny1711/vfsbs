@@ -105,7 +105,7 @@ const Profile = () => {
             </div>
             <div className="profile-summary">
               <h2>{formData.firstName} {formData.lastName}</h2>
-              <p className="user-role">{profile?.role || 'Customer'}</p>
+              <p className="user-role">{profile?.role === 'ADMIN' ? 'Administrator' : 'Client'}</p>
               <p className="user-email">{formData.email}</p>
             </div>
           </div>

@@ -55,7 +55,7 @@ export const routesAPI = {
   delete: (id) => api.delete(`/api/routes/${id}`)
 };
 
-// Schedules API
+// Schedules API (reused as Providers API for compatibility)
 export const schedulesAPI = {
   getAll: (params) => api.get('/api/schedules', { params }),
   search: (params) => api.get('/api/schedules/search', { params }),
@@ -63,6 +63,14 @@ export const schedulesAPI = {
   create: (data) => api.post('/api/schedules', data),
   update: (id, data) => api.put(`/api/schedules/${id}`, data),
   delete: (id) => api.delete(`/api/schedules/${id}`)
+};
+
+// Providers API (maps to schedules for backend compatibility)
+export const providersAPI = {
+  getAll: (params) => api.get('/api/schedules', { params }),
+  search: (params) => api.get('/api/schedules/search', { params }),
+  getById: (id) => api.get(`/api/schedules/${id}`),
+  getNearby: (params) => api.get('/api/schedules', { params })
 };
 
 // Bookings API

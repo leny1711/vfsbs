@@ -43,7 +43,7 @@ const Login = () => {
         <Card className="auth-card">
           <div className="auth-header">
             <h1>Welcome Back! 🙂</h1>
-            <p>Sign in to your account to continue</p>
+            <p>Sign in to access service providers near you</p>
           </div>
 
           {error && <Alert type="error">{error}</Alert>}
@@ -95,7 +95,7 @@ const Login = () => {
               Admin: admin@vfsbs.com / admin123
             </p>
             <p className="demo-account">
-              Customer: customer@vfsbs.com / customer123
+              Client: customer@vfsbs.com / customer123
             </p>
           </div>
         </Card>

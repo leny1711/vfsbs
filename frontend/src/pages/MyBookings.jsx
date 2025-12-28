@@ -66,8 +66,8 @@ const MyBookings = () => {
     <div className="my-bookings-container">
       <div className="container">
         <div className="page-header">
-          <h1>My Bookings 🎫</h1>
-          <p>View and manage your bus tickets</p>
+          <h1>My Service Bookings 🙂</h1>
+          <p>View and manage your service provider bookings</p>
         </div>
 
         {successMessage && (
@@ -86,9 +86,9 @@ const MyBookings = () => {
           <Card className="no-bookings-card">
             <div className="no-bookings">
               <h3>No bookings yet</h3>
-              <p>Start your journey by booking your first bus ticket</p>
+              <p>Start by finding service providers near you</p>
               <Button variant="primary" onClick={() => window.location.href = '/search'}>
-                Search for Routes
+                Find Providers
               </Button>
             </div>
           </Card>

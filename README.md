@@ -1,12 +1,20 @@
-# VFS Bus System
+# ServiceHub - Human Service Marketplace
 
-Complete monorepo bus ticket booking system with backend API and frontend web application.
+A modern platform that connects people who need help with nearby human service providers. Think Uber, but for human services.
+
+## Project Concept
+
+ServiceHub is a service marketplace (not a transport/bus application) that enables:
+
+- **Clients**: Request services from nearby providers
+- **Providers**: Offer their services to people in their area
+- **Emergency Mode**: One-click access to immediate help from the closest available provider
 
 ## Project Structure
 
 ```
 vfsbs/
-├── backend/          # Node.js/Express backend
+├── backend/          # Node.js/Express backend API
 ├── frontend/         # React web application
 └── docker-compose.yml # PostgreSQL database
 ```
@@ -63,23 +71,40 @@ Frontend runs at `http://localhost:3000`
 - Google Maps JavaScript API
 - Axios for API calls
 
-## Features
+## Core Features
 
-- ✅ User authentication (login/register)
-- ✅ Role-based access control (Customer/Admin)
-- ✅ Bus route management with GPS coordinates
-- ✅ Schedule search and filtering
-- ✅ Multi-seat booking system
+### Frontend Web Application
+- ✅ Authentication (login/register)
+- ✅ Home page: "Find help near me" with Google Maps
+- ✅ Nearby service providers visualization
+- ✅ Service provider cards (type, distance, availability)
+- ✅ **Emergency Button** 🚨 - One-click immediate help
+- ✅ Provider booking with flexible duration
 - ✅ Stripe payment integration
-- ✅ Google Maps visualization
-- ✅ Booking management and cancellation
-- ✅ User profile management
-- ✅ Admin dashboard for routes and schedules
+- ✅ User dashboard for managing bookings
+- ✅ Profile management
+
+### Emergency Mode
+- Large, visible emergency button on home page
+- Instantly requests closest available provider
+- No manual selection needed
+- Clear UI feedback (searching → provider found)
+- Visually distinct from normal booking
+
+### Design
+- Modern, friendly, and professional UI
+- Rounded corners throughout
+- Soft shadows for depth
+- Clean spacing and layout
+- Smooth hover/transition effects
+- Warm color palette (Yellow/Amber primary)
+- Mobile-first responsive design
+- Startup/SaaS aesthetic
 
 ## Test Accounts
 
 - **Admin**: admin@vfsbs.com / admin123
-- **Customer**: customer@vfsbs.com / customer123
+- **Client**: customer@vfsbs.com / customer123
 
 ## Documentation
 
@@ -115,6 +140,15 @@ Backend and frontend run independently:
 - Run `npm run build`
 - Deploy `dist/` folder to static hosting (Vercel, Netlify, etc.)
 - Set production environment variables
+
+## Technical Notes
+
+- Frontend uses existing backend API endpoints
+- Backend schema maintained for compatibility
+- Service providers mapped from existing schedule/route data
+- No backend modifications required
+- Payment flow integrated with Stripe
+- Google Maps for location visualization
 
 ## License
 
